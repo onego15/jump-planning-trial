@@ -134,18 +134,19 @@ export class GameManager {
         prompt += ']\n\n';
         prompt += '制約:\n';
         prompt += '- ジャンプ最大高さ = 1.5ブロック\n';
-        prompt += '- ジャンプ最大距離 = 1.0ブロック\n';
-        prompt += '- 移動速度 = 0.12/フレーム\n';
-        prompt += '- コースの穴は最大1ブロック分のみ\n\n';
+        prompt += '- ジャンプ最大距離 = 1.0ブロック（斜めは約1.4ブロック）\n';
+        prompt += '- 移動速度 = グリッドベース（1ブロック単位で移動）\n';
+        prompt += '- コースは複雑な経路（横移動、段差、斜め配置あり）\n\n';
         prompt += '利用可能なアクション:\n';
-        prompt += '- MOVE_FORWARD: 前進\n';
+        prompt += '- MOVE_FORWARD: 前進（同じ高さまたは下段差）\n';
         prompt += '- TURN_RIGHT: 右に90度回転\n';
         prompt += '- TURN_LEFT: 左に90度回転\n';
-        prompt += '- JUMP: ジャンプ（移動中も可能）\n';
-        prompt += '- JUMP_FORWARD: ジャンプしながら前進（穴や段差を飛び越える）\n\n';
+        prompt += '- JUMP_FORWARD: ジャンプしながら前進（穴や上段差を飛び越える）\n';
+        prompt += '- JUMP_DIAGONAL_LEFT: 左斜め前にジャンプ（横移動が必要な場合）\n';
+        prompt += '- JUMP_DIAGONAL_RIGHT: 右斜め前にジャンプ（横移動が必要な場合）\n\n';
         prompt += '以下のJSON形式で行動計画を返してください:\n';
         prompt += '{\n';
-        prompt += '  "plan": ["MOVE_FORWARD", "JUMP_FORWARD", "TURN_RIGHT", ...]\n';
+        prompt += '  "plan": ["MOVE_FORWARD", "JUMP_FORWARD", "JUMP_DIAGONAL_LEFT", "TURN_RIGHT", ...]\n';
         prompt += '}';
 
         return prompt;
@@ -275,39 +276,97 @@ export class GameManager {
                     currentZ = blockAt2.z;
                     currentY = blockAt2.y;
                 } else {
-                    // 2ブロック先もない：方向転換
+                    // 2ブロック先もない：斜め方向をチェック
+                    const leftDirX = -directionZ;
+                    const leftDirZ = directionX;
+                    const rightDirX = directionZ;
+                    const rightDirZ = -directionX;
+
+                    // 左斜め前をチェック（前1+左1, 前1+左2, 前2+左1）
+                    let diagonalLeft = null;
+                    for (let f = 1; f <= 2; f++) {
+                        for (let s = 1; s <= 2; s++) {
+                            const checkX = currentX + directionX * f + leftDirX * s;
+                            const checkZ = currentZ + directionZ * f + leftDirZ * s;
+                            const found = blocks.find(b =>
+                                Math.abs(b.x - checkX) < 0.6 &&
+                                Math.abs(b.z - checkZ) < 0.6
+                            );
+                            if (found) {
+                                diagonalLeft = found;
+                                break;
+                            }
+                        }
+                        if (diagonalLeft) break;
+                    }
+
+                    // 右斜め前をチェック
+                    let diagonalRight = null;
+                    for (let f = 1; f <= 2; f++) {
+                        for (let s = 1; s <= 2; s++) {
+                            const checkX = currentX + directionX * f + rightDirX * s;
+                            const checkZ = currentZ + directionZ * f + rightDirZ * s;
+                            const found = blocks.find(b =>
+                                Math.abs(b.x - checkX) < 0.6 &&
+                                Math.abs(b.z - checkZ) < 0.6
+                            );
+                            if (found) {
+                                diagonalRight = found;
+                                break;
+                            }
+                        }
+                        if (diagonalRight) break;
+                    }
+
+                    // ゴールに近い方の斜めジャンプを選択
                     const goalDeltaX = goal.x - currentX;
                     const goalDeltaZ = goal.z - currentZ;
 
-                    // 別の方向を試す（適切な回転を計算）
-                    if (Math.abs(goalDeltaX) > 0.5) {
-                        // X方向に進むべき
-                        const newDirX = goalDeltaX > 0 ? 1 : -1;
-                        const newDirZ = 0;
-                        // 現在の向きから目標方向への回転を計算
-                        if (directionX !== newDirX || directionZ !== newDirZ) {
-                            plan.push('TURN_RIGHT');
-                            const temp = directionX;
-                            directionX = directionZ;
-                            directionZ = -temp;
+                    if (diagonalLeft && diagonalRight) {
+                        // 両方ある場合はゴールに近い方を選択
+                        const distLeft = Math.abs(diagonalLeft.x - goal.x) + Math.abs(diagonalLeft.z - goal.z);
+                        const distRight = Math.abs(diagonalRight.x - goal.x) + Math.abs(diagonalRight.z - goal.z);
+
+                        if (distLeft < distRight) {
+                            plan.push('JUMP_DIAGONAL_LEFT');
+                            currentX = diagonalLeft.x;
+                            currentZ = diagonalLeft.z;
+                            currentY = diagonalLeft.y;
+                        } else {
+                            plan.push('JUMP_DIAGONAL_RIGHT');
+                            currentX = diagonalRight.x;
+                            currentZ = diagonalRight.z;
+                            currentY = diagonalRight.y;
                         }
-                    } else if (Math.abs(goalDeltaZ) > 0.5) {
-                        // Z方向に進むべき
-                        const newDirX = 0;
-                        const newDirZ = goalDeltaZ > 0 ? 1 : -1;
-                        // 現在の向きから目標方向への回転を計算
-                        if (directionX !== newDirX || directionZ !== newDirZ) {
-                            plan.push('TURN_RIGHT');
-                            const temp = directionX;
-                            directionX = directionZ;
-                            directionZ = -temp;
-                        }
+                    } else if (diagonalLeft) {
+                        plan.push('JUMP_DIAGONAL_LEFT');
+                        currentX = diagonalLeft.x;
+                        currentZ = diagonalLeft.z;
+                        currentY = diagonalLeft.y;
+                    } else if (diagonalRight) {
+                        plan.push('JUMP_DIAGONAL_RIGHT');
+                        currentX = diagonalRight.x;
+                        currentZ = diagonalRight.z;
+                        currentY = diagonalRight.y;
                     } else {
-                        // ゴールに十分近い：右に回転
-                        plan.push('TURN_RIGHT');
-                        const temp = directionX;
-                        directionX = directionZ;
-                        directionZ = -temp;
+                        // 斜めもない：方向転換
+                        if (Math.abs(goalDeltaX) > 0.5) {
+                            plan.push('TURN_RIGHT');
+                            const temp = directionX;
+                            directionX = directionZ;
+                            directionZ = -temp;
+                        } else if (Math.abs(goalDeltaZ) > 0.5) {
+                            plan.push('TURN_RIGHT');
+                            const temp = directionX;
+                            directionX = directionZ;
+                            directionZ = -temp;
+                        } else {
+                            // ゴールに十分近い：右に回転
+                            plan.push('TURN_RIGHT');
+                            const temp = directionX;
+                            directionX = directionZ;
+                            directionZ = -temp;
+                        }
                     }
                 }
             }
@@ -406,6 +465,43 @@ export class GameManager {
                         this.agent.moveForward(targetBlock);
                     } else {
                         this.agent.jumpForward(targetBlock);
+                    }
+                }
+                break;
+            case 'JUMP_DIAGONAL_LEFT':
+            case 'JUMP_DIAGONAL_RIGHT':
+                // 斜め方向のブロックを検索
+                let diagonalBlock = null;
+
+                // 左右方向のベクトルを計算
+                const leftDir = { x: -agentDir.z, z: agentDir.x };  // 左方向
+                const rightDir = { x: agentDir.z, z: -agentDir.x }; // 右方向
+                const sideDir = action === 'JUMP_DIAGONAL_LEFT' ? leftDir : rightDir;
+
+                // 斜め方向（前方1 + 左右1）をチェック
+                for (let forward = 1; forward <= 2; forward++) {
+                    for (let side = 1; side <= 2; side++) {
+                        const checkX = agentPos.x + agentDir.x * forward + sideDir.x * side;
+                        const checkZ = agentPos.z + agentDir.z * forward + sideDir.z * side;
+
+                        const foundBlock = blocks.find(b =>
+                            Math.abs(b.x - checkX) < 0.6 &&
+                            Math.abs(b.z - checkZ) < 0.6
+                        );
+
+                        if (foundBlock) {
+                            diagonalBlock = foundBlock;
+                            break;
+                        }
+                    }
+                    if (diagonalBlock) break;
+                }
+
+                if (diagonalBlock) {
+                    if (action === 'JUMP_DIAGONAL_LEFT') {
+                        this.agent.jumpDiagonalLeft(diagonalBlock);
+                    } else {
+                        this.agent.jumpDiagonalRight(diagonalBlock);
                     }
                 }
                 break;

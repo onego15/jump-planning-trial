@@ -49,32 +49,50 @@ export class LevelGenerator {
 
         const types = ['brick', 'question', 'metal'];
 
-        // まず主要なパスを作成（Z方向に進む）
-        for (let i = 0; i < 15; i++) {
+        // まず主要なパスを作成（より複雑な経路）
+        for (let i = 0; i < 20; i++) {
             const type = types[Math.floor(Math.random() * types.length)];
             this.addBlock(currentX, currentY, currentZ, type);
 
-            // 次の行動を決定（主にZ方向に進む）
+            // 次の行動を決定（複雑な動き）
             const action = Math.random();
 
-            if (action < 0.7) {
-                // 70%: 前進（穴なし）
+            if (action < 0.4) {
+                // 40%: 前進（穴なし）
                 currentZ += 1;
-            } else if (action < 0.85) {
-                // 15%: 1ブロック分の穴のみ
+            } else if (action < 0.55) {
+                // 15%: 1ブロック分の穴
                 currentZ += 2;
-            } else if (action < 0.95) {
+            } else if (action < 0.65) {
                 // 10%: 高さを上げる
-                if (currentY < 3) {
+                if (currentY < 4) {
                     currentY += 1;
                     currentZ += 1;
                 }
-            } else {
-                // 5%: 横に少し移動
-                if (i > 5 && Math.abs(currentX) < 2) {
-                    currentX += Math.random() < 0.5 ? 1 : -1;
+            } else if (action < 0.75) {
+                // 10%: 高さを下げる（下段差）
+                if (currentY > 0) {
+                    currentY -= 1;
+                    currentZ += 1;
                 }
-                currentZ += 1;
+            } else if (action < 0.85) {
+                // 10%: 左に移動
+                if (Math.abs(currentX - 1) < 3) {
+                    currentX -= 1;
+                    currentZ += 1;
+                }
+            } else if (action < 0.95) {
+                // 10%: 右に移動
+                if (Math.abs(currentX + 1) < 3) {
+                    currentX += 1;
+                    currentZ += 1;
+                }
+            } else {
+                // 5%: 斜め移動（左右 + 前）
+                if (Math.abs(currentX) < 3) {
+                    currentX += Math.random() < 0.5 ? 1 : -1;
+                    currentZ += 2;
+                }
             }
         }
 

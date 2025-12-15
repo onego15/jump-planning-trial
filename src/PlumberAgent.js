@@ -170,6 +170,20 @@ export class PlumberAgent {
     }
 
     /**
+     * 左斜め前にジャンプ
+     */
+    jumpDiagonalLeft(targetBlock) {
+        this.moveToBlock(targetBlock, true);
+    }
+
+    /**
+     * 右斜め前にジャンプ
+     */
+    jumpDiagonalRight(targetBlock) {
+        this.moveToBlock(targetBlock, true);
+    }
+
+    /**
      * グリッドベースの移動更新
      */
     update(blocks, deltaTime) {
