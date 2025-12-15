@@ -47,42 +47,37 @@ export class LevelGenerator {
         let currentY = 0;
         let currentZ = 2;
 
-        const maxJumpDistance = 2; // 最大ジャンプ距離
         const types = ['brick', 'question', 'metal'];
 
-        for (let i = 0; i < 20; i++) {
-            // ブロックの種類をランダムに選択
+        // まず主要なパスを作成（Z方向に進む）
+        for (let i = 0; i < 15; i++) {
             const type = types[Math.floor(Math.random() * types.length)];
-
-            // 現在位置にブロックを配置
             this.addBlock(currentX, currentY, currentZ, type);
 
-            // 次の行動を決定
+            // 次の行動を決定（主にZ方向に進む）
             const action = Math.random();
 
-            if (action < 0.5) {
-                // 前進（穴なし）
+            if (action < 0.6) {
+                // 60%: 前進（穴なし）
                 currentZ += 1;
-            } else if (action < 0.7) {
-                // ジャンプで穴を飛び越える（1-2ブロック分）
-                const gapSize = Math.random() < 0.5 ? 1 : 2;
-                currentZ += gapSize;
-            } else if (action < 0.8) {
-                // 高さを上げる
-                if (currentY < 4) {
+            } else if (action < 0.75) {
+                // 15%: 1ブロック分の穴
+                currentZ += 2;
+            } else if (action < 0.85) {
+                // 10%: 2ブロック分の穴
+                currentZ += 3;
+            } else if (action < 0.95) {
+                // 10%: 高さを上げる
+                if (currentY < 3) {
                     currentY += 1;
-                }
-                currentZ += 1;
-            } else if (action < 0.9) {
-                // 右に移動
-                if (Math.abs(currentX + 1) < this.gridSize / 2) {
-                    currentX += 1;
+                    currentZ += 1;
                 }
             } else {
-                // 左に移動
-                if (Math.abs(currentX - 1) < this.gridSize / 2) {
-                    currentX -= 1;
+                // 5%: 横に少し移動
+                if (i > 5 && Math.abs(currentX) < 2) {
+                    currentX += Math.random() < 0.5 ? 1 : -1;
                 }
+                currentZ += 1;
             }
         }
 
@@ -90,11 +85,16 @@ export class LevelGenerator {
         const finalType = types[Math.floor(Math.random() * types.length)];
         this.addBlock(currentX, currentY, currentZ, finalType);
 
-        // ゴール位置を設定（最後のブロックの少し上）
+        // ゴールへの階段を追加
+        for (let i = 1; i <= 2; i++) {
+            this.addBlock(currentX, currentY + i, currentZ + i, 'brick');
+        }
+
+        // ゴール位置を設定
         this.goalPosition = {
             x: currentX,
-            y: currentY + 2,
-            z: currentZ + 2
+            y: currentY + 3,
+            z: currentZ + 3
         };
     }
 
