@@ -57,15 +57,12 @@ export class LevelGenerator {
             // 次の行動を決定（主にZ方向に進む）
             const action = Math.random();
 
-            if (action < 0.6) {
-                // 60%: 前進（穴なし）
+            if (action < 0.7) {
+                // 70%: 前進（穴なし）
                 currentZ += 1;
-            } else if (action < 0.75) {
-                // 15%: 1ブロック分の穴
-                currentZ += 2;
             } else if (action < 0.85) {
-                // 10%: 2ブロック分の穴
-                currentZ += 3;
+                // 15%: 1ブロック分の穴のみ
+                currentZ += 2;
             } else if (action < 0.95) {
                 // 10%: 高さを上げる
                 if (currentY < 3) {

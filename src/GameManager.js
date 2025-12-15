@@ -134,8 +134,9 @@ export class GameManager {
         prompt += ']\n\n';
         prompt += '制約:\n';
         prompt += '- ジャンプ最大高さ = 1.5ブロック\n';
-        prompt += '- ジャンプ最大距離 = 2.5ブロック\n';
-        prompt += '- 移動速度 = 0.15/フレーム\n\n';
+        prompt += '- ジャンプ最大距離 = 1.0ブロック\n';
+        prompt += '- 移動速度 = 0.08/フレーム\n';
+        prompt += '- コースの穴は最大1ブロック分のみ\n\n';
         prompt += '利用可能なアクション:\n';
         prompt += '- MOVE_FORWARD: 前進\n';
         prompt += '- TURN_RIGHT: 右に90度回転\n';
@@ -261,7 +262,7 @@ export class GameManager {
                     currentY = blockAt1.y;
                 }
             } else {
-                // 1ブロック先が穴：2ブロック先をチェック
+                // 1ブロック先が穴：2ブロック先（1マス分の穴）をチェック
                 const blockAt2 = blocks.find(b =>
                     Math.abs(b.x - (currentX + directionX * 2)) < 0.6 &&
                     Math.abs(b.z - (currentZ + directionZ * 2)) < 0.6
@@ -270,60 +271,43 @@ export class GameManager {
                 if (blockAt2) {
                     // 2ブロック先に着地点がある：1ブロック分の穴をジャンプ
                     plan.push('JUMP_FORWARD');
-                    plan.push('JUMP_FORWARD');
                     currentX = blockAt2.x;
                     currentZ = blockAt2.z;
                     currentY = blockAt2.y;
                 } else {
-                    // 2ブロック先もない：3ブロック先をチェック
-                    const blockAt3 = blocks.find(b =>
-                        Math.abs(b.x - (currentX + directionX * 3)) < 0.6 &&
-                        Math.abs(b.z - (currentZ + directionZ * 3)) < 0.6
-                    );
+                    // 2ブロック先もない：方向転換
+                    const goalDeltaX = goal.x - currentX;
+                    const goalDeltaZ = goal.z - currentZ;
 
-                    if (blockAt3) {
-                        // 3ブロック先に着地点がある：2ブロック分の穴をジャンプ
-                        plan.push('JUMP_FORWARD');
-                        plan.push('JUMP_FORWARD');
-                        plan.push('JUMP_FORWARD');
-                        currentX = blockAt3.x;
-                        currentZ = blockAt3.z;
-                        currentY = blockAt3.y;
-                    } else {
-                        // どこにも着地点がない：ゴール方向を再確認して方向転換
-                        const goalDeltaX = goal.x - currentX;
-                        const goalDeltaZ = goal.z - currentZ;
-
-                        // 別の方向を試す（適切な回転を計算）
-                        if (Math.abs(goalDeltaX) > 0.5) {
-                            // X方向に進むべき
-                            const newDirX = goalDeltaX > 0 ? 1 : -1;
-                            const newDirZ = 0;
-                            // 現在の向きから目標方向への回転を計算
-                            if (directionX !== newDirX || directionZ !== newDirZ) {
-                                plan.push('TURN_RIGHT');
-                                const temp = directionX;
-                                directionX = directionZ;
-                                directionZ = -temp;
-                            }
-                        } else if (Math.abs(goalDeltaZ) > 0.5) {
-                            // Z方向に進むべき
-                            const newDirX = 0;
-                            const newDirZ = goalDeltaZ > 0 ? 1 : -1;
-                            // 現在の向きから目標方向への回転を計算
-                            if (directionX !== newDirX || directionZ !== newDirZ) {
-                                plan.push('TURN_RIGHT');
-                                const temp = directionX;
-                                directionX = directionZ;
-                                directionZ = -temp;
-                            }
-                        } else {
-                            // ゴールに十分近い：右に回転
+                    // 別の方向を試す（適切な回転を計算）
+                    if (Math.abs(goalDeltaX) > 0.5) {
+                        // X方向に進むべき
+                        const newDirX = goalDeltaX > 0 ? 1 : -1;
+                        const newDirZ = 0;
+                        // 現在の向きから目標方向への回転を計算
+                        if (directionX !== newDirX || directionZ !== newDirZ) {
                             plan.push('TURN_RIGHT');
                             const temp = directionX;
                             directionX = directionZ;
                             directionZ = -temp;
                         }
+                    } else if (Math.abs(goalDeltaZ) > 0.5) {
+                        // Z方向に進むべき
+                        const newDirX = 0;
+                        const newDirZ = goalDeltaZ > 0 ? 1 : -1;
+                        // 現在の向きから目標方向への回転を計算
+                        if (directionX !== newDirX || directionZ !== newDirZ) {
+                            plan.push('TURN_RIGHT');
+                            const temp = directionX;
+                            directionX = directionZ;
+                            directionZ = -temp;
+                        }
+                    } else {
+                        // ゴールに十分近い：右に回転
+                        plan.push('TURN_RIGHT');
+                        const temp = directionX;
+                        directionX = directionZ;
+                        directionZ = -temp;
                     }
                 }
             }
