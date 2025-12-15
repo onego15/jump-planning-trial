@@ -232,34 +232,58 @@ export class GameManager {
                 Math.abs(b.z - nextZ) < 0.5
             );
 
-            // 穴または高いブロックをチェック
-            if (!blockAtNext) {
-                // 穴がある場合：ジャンプして飛び越える
-                plan.push('JUMP');
-                plan.push('MOVE_FORWARD');
-                currentX = nextX;
-                currentZ = nextZ;
-                // 着地先のブロックを探す
-                const landingBlock = blocks.find(b =>
-                    Math.abs(b.x - currentX) < 0.5 &&
-                    Math.abs(b.z - currentZ) < 0.5
-                );
-                if (landingBlock) {
-                    currentY = landingBlock.y;
+            // 前方にブロックがある場合
+            if (blockAtNext) {
+                if (blockAtNext.y > currentY + 0.1) {
+                    // 高いブロックがある場合：ジャンプして登る
+                    plan.push('JUMP');
+                    plan.push('MOVE_FORWARD');
+                    currentX = nextX;
+                    currentZ = nextZ;
+                    currentY = blockAtNext.y;
+                } else {
+                    // 同じ高さまたは低いブロック：そのまま前進
+                    plan.push('MOVE_FORWARD');
+                    currentX = nextX;
+                    currentZ = nextZ;
+                    currentY = blockAtNext.y;
                 }
-            } else if (blockAtNext.y > currentY + 0.1) {
-                // 高いブロックがある場合：ジャンプして登る
-                plan.push('JUMP');
-                plan.push('MOVE_FORWARD');
-                currentX = nextX;
-                currentZ = nextZ;
-                currentY = blockAtNext.y;
             } else {
-                // 同じ高さまたは低いブロック：そのまま前進
-                plan.push('MOVE_FORWARD');
-                currentX = nextX;
-                currentZ = nextZ;
-                currentY = blockAtNext.y;
+                // 穴がある場合：2-3ブロック先に着地可能なブロックを探す
+                let landingBlock = null;
+                let jumpDistance = 0;
+
+                for (let dist = 2; dist <= 3; dist++) {
+                    const targetX = currentX + directionX * dist;
+                    const targetZ = currentZ + directionZ * dist;
+                    const potentialLanding = blocks.find(b =>
+                        Math.abs(b.x - targetX) < 0.5 &&
+                        Math.abs(b.z - targetZ) < 0.5
+                    );
+
+                    if (potentialLanding) {
+                        landingBlock = potentialLanding;
+                        jumpDistance = dist;
+                        break;
+                    }
+                }
+
+                if (landingBlock) {
+                    // 着地可能なブロックがある：ジャンプして飛び越える
+                    plan.push('JUMP');
+                    for (let i = 0; i < jumpDistance; i++) {
+                        plan.push('MOVE_FORWARD');
+                    }
+                    currentX = landingBlock.x;
+                    currentZ = landingBlock.z;
+                    currentY = landingBlock.y;
+                } else {
+                    // 着地できる場所がない：方向転換を試みる
+                    plan.push('TURN_RIGHT');
+                    const temp = directionX;
+                    directionX = directionZ;
+                    directionZ = -temp;
+                }
             }
         }
 
