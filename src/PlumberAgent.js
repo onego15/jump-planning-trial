@@ -19,7 +19,7 @@ export class PlumberAgent {
         // 物理パラメータ
         this.gravity = -0.03;
         this.jumpForce = 0.35;  // 1マス分のジャンプに調整
-        this.moveSpeed = 0.08;  // 1マス分の前進距離に調整
+        this.moveSpeed = 0.12;  // 1マス分の前進距離に調整
         this.maxJumpHeight = 1.5;
         this.maxJumpDistance = 1.0;
 

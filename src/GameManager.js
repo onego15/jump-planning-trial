@@ -135,7 +135,7 @@ export class GameManager {
         prompt += '制約:\n';
         prompt += '- ジャンプ最大高さ = 1.5ブロック\n';
         prompt += '- ジャンプ最大距離 = 1.0ブロック\n';
-        prompt += '- 移動速度 = 0.08/フレーム\n';
+        prompt += '- 移動速度 = 0.12/フレーム\n';
         prompt += '- コースの穴は最大1ブロック分のみ\n\n';
         prompt += '利用可能なアクション:\n';
         prompt += '- MOVE_FORWARD: 前進\n';
