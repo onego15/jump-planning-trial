@@ -18,8 +18,8 @@ export class PlumberAgent {
 
         // 物理パラメータ
         this.gravity = -0.03;
-        this.jumpForce = 0.4;
-        this.moveSpeed = 0.1;
+        this.jumpForce = 0.5;  // 0.4 -> 0.5 (より高く長く飛ぶ)
+        this.moveSpeed = 0.15;  // 0.1 -> 0.15 (より速く前進)
         this.maxJumpHeight = 1.5;
         this.maxJumpDistance = 2.0;
 
@@ -188,9 +188,10 @@ export class PlumberAgent {
             }
         }
 
-        // 移動の減速
-        this.velocity.x *= 0.85;
-        this.velocity.z *= 0.85;
+        // 移動の減速（ジャンプ中は減速を緩くする）
+        const deceleration = this.isJumping ? 0.98 : 0.85;
+        this.velocity.x *= deceleration;
+        this.velocity.z *= deceleration;
 
         // キャラクターの位置を更新
         this.character.position.copy(this.position);

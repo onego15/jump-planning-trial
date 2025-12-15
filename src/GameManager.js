@@ -134,8 +134,8 @@ export class GameManager {
         prompt += ']\n\n';
         prompt += '制約:\n';
         prompt += '- ジャンプ最大高さ = 1.5ブロック\n';
-        prompt += '- ジャンプ最大距離 = 2.0ブロック\n';
-        prompt += '- 移動速度 = 0.1/フレーム\n\n';
+        prompt += '- ジャンプ最大距離 = 2.5ブロック\n';
+        prompt += '- 移動速度 = 0.15/フレーム\n\n';
         prompt += '利用可能なアクション:\n';
         prompt += '- MOVE_FORWARD: 前進\n';
         prompt += '- TURN_RIGHT: 右に90度回転\n';
