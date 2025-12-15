@@ -345,16 +345,18 @@ export class GameManager {
             return;
         }
 
-        // プランに従ってアクション実行（一定間隔で）
-        this.actionTimer += deltaTime;
-        if (this.actionTimer >= this.actionInterval && this.currentStep < this.plan.length) {
-            this.executeAction(this.plan[this.currentStep]);
-            this.currentStep++;
-            this.actionTimer = 0; // タイマーをリセット
+        // プランに従ってアクション実行（移動完了後に次のアクション）
+        if (!this.agent.isMoving && this.currentStep < this.plan.length) {
+            this.actionTimer += deltaTime;
+            if (this.actionTimer >= this.actionInterval) {
+                this.executeAction(this.plan[this.currentStep]);
+                this.currentStep++;
+                this.actionTimer = 0; // タイマーをリセット
+            }
         }
 
-        // エージェントの物理演算更新
-        const status = this.agent.update(this.levelGenerator.blocks);
+        // エージェントのグリッドベース移動更新
+        const status = this.agent.update(this.levelGenerator.blocks, deltaTime);
 
         // 落下判定
         if (status === 'fell') {
@@ -374,9 +376,38 @@ export class GameManager {
     executeAction(action) {
         if (!this.agent) return;
 
+        const blocks = this.levelGenerator.blocks;
+        const agentPos = this.agent.position;
+        const agentDir = this.agent.direction;
+
         switch(action) {
             case 'MOVE_FORWARD':
-                this.agent.moveForward();
+            case 'JUMP_FORWARD':
+                // 次のブロックを検索（1〜3ブロック先）
+                let targetBlock = null;
+
+                for (let dist = 1; dist <= 3; dist++) {
+                    const checkX = agentPos.x + agentDir.x * dist;
+                    const checkZ = agentPos.z + agentDir.z * dist;
+
+                    const foundBlock = blocks.find(b =>
+                        Math.abs(b.x - checkX) < 0.6 &&
+                        Math.abs(b.z - checkZ) < 0.6
+                    );
+
+                    if (foundBlock) {
+                        targetBlock = foundBlock;
+                        break;
+                    }
+                }
+
+                if (targetBlock) {
+                    if (action === 'MOVE_FORWARD') {
+                        this.agent.moveForward(targetBlock);
+                    } else {
+                        this.agent.jumpForward(targetBlock);
+                    }
+                }
                 break;
             case 'TURN_RIGHT':
                 this.agent.turn('right');
@@ -386,9 +417,6 @@ export class GameManager {
                 break;
             case 'JUMP':
                 this.agent.jump();
-                break;
-            case 'JUMP_FORWARD':
-                this.agent.jumpForward();
                 break;
         }
     }

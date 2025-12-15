@@ -16,10 +16,15 @@ export class PlumberAgent {
         this.isJumping = false;
         this.isGrounded = false;
 
-        // 物理パラメータ
+        // グリッドベースの移動
+        this.targetPosition = null;
+        this.moveProgress = 0;
+        this.isMoving = false;
+        this.moveSpeed = 3.0; // 移動速度（1秒で3ブロック）
+        this.jumpHeight = 0.8; // ジャンプの高さ
+
+        // 物理パラメータ（着地判定用）
         this.gravity = -0.03;
-        this.jumpForce = 0.35;  // 1マス分のジャンプに調整
-        this.moveSpeed = 0.12;  // 1マス分の前進距離に調整
         this.maxJumpHeight = 1.5;
         this.maxJumpDistance = 1.0;
 
@@ -106,11 +111,27 @@ export class PlumberAgent {
     }
 
     /**
-     * 前進
+     * 指定したブロックに向かって移動開始
      */
-    moveForward() {
-        this.velocity.x = this.direction.x * this.moveSpeed;
-        this.velocity.z = this.direction.z * this.moveSpeed;
+    moveToBlock(targetBlock, isJump = false) {
+        if (this.isMoving) return; // 既に移動中の場合は無視
+
+        this.targetPosition = new THREE.Vector3(
+            targetBlock.x,
+            targetBlock.y + 1, // キャラクターの足元がブロックの上
+            targetBlock.z
+        );
+        this.startPosition = this.position.clone();
+        this.moveProgress = 0;
+        this.isMoving = true;
+        this.isJumping = isJump;
+    }
+
+    /**
+     * 前進（次のブロックを指定する必要あり）
+     */
+    moveForward(targetBlock) {
+        this.moveToBlock(targetBlock, false);
     }
 
     /**
@@ -135,70 +156,61 @@ export class PlumberAgent {
     }
 
     /**
-     * ジャンプ
+     * ジャンプ（その場でジャンプ）
      */
     jump() {
-        if (!this.isJumping && this.isGrounded) {
-            this.velocity.y = this.jumpForce;
-            this.isJumping = true;
-            this.isGrounded = false;
-        }
+        // その場ジャンプは使用しない（グリッドベースでは不要）
     }
 
     /**
      * ジャンプしながら前進（穴や段差を飛び越える）
      */
-    jumpForward() {
-        if (!this.isJumping && this.isGrounded) {
-            this.velocity.y = this.jumpForce;
-            this.velocity.x = this.direction.x * this.moveSpeed;
-            this.velocity.z = this.direction.z * this.moveSpeed;
-            this.isJumping = true;
-            this.isGrounded = false;
-        } else if (this.isJumping) {
-            // 既にジャンプ中の場合は前進だけ追加
-            this.velocity.x = this.direction.x * this.moveSpeed;
-            this.velocity.z = this.direction.z * this.moveSpeed;
-        }
+    jumpForward(targetBlock) {
+        this.moveToBlock(targetBlock, true);
     }
 
     /**
-     * 物理演算の更新
+     * グリッドベースの移動更新
      */
-    update(blocks) {
-        // 重力を適用（Y軸方向）
-        this.velocity.y += this.gravity;
+    update(blocks, deltaTime) {
+        if (this.isMoving && this.targetPosition) {
+            // 移動進捗を更新
+            this.moveProgress += deltaTime * this.moveSpeed;
 
-        // 位置を更新
-        this.position.x += this.velocity.x;
-        this.position.y += this.velocity.y;
-        this.position.z += this.velocity.z;
+            if (this.moveProgress >= 1.0) {
+                // 移動完了：目標位置に正確に配置
+                this.position.copy(this.targetPosition);
+                this.isMoving = false;
+                this.isJumping = false;
+                this.isGrounded = true;
+                this.moveProgress = 0;
+            } else {
+                // 補間で移動
+                const t = this.moveProgress;
+                this.position.x = this.startPosition.x + (this.targetPosition.x - this.startPosition.x) * t;
+                this.position.z = this.startPosition.z + (this.targetPosition.z - this.startPosition.z) * t;
 
-        // 地面との衝突判定
-        this.isGrounded = false;
-        for (const block of blocks) {
-            if (this.checkCollision(block)) {
-                // ブロックの上に着地
-                if (this.velocity.y < 0) {
-                    this.position.y = block.y + 1;
-                    this.velocity.y = 0;
-                    this.isJumping = false;
-                    this.isGrounded = true;
+                if (this.isJumping) {
+                    // 放物線でジャンプ
+                    const jumpProgress = Math.sin(t * Math.PI);
+                    const baseY = this.startPosition.y + (this.targetPosition.y - this.startPosition.y) * t;
+                    this.position.y = baseY + jumpProgress * this.jumpHeight;
+                } else {
+                    // 直線で移動
+                    this.position.y = this.startPosition.y + (this.targetPosition.y - this.startPosition.y) * t;
                 }
             }
-        }
 
-        // 移動の減速（ジャンプ中は減速を緩くする）
-        const deceleration = this.isJumping ? 0.98 : 0.85;
-        this.velocity.x *= deceleration;
-        this.velocity.z *= deceleration;
-
-        // キャラクターの位置を更新
-        this.character.position.copy(this.position);
-
-        // 簡単なアニメーション（上下に少し揺らす）
-        if (this.isGrounded && (Math.abs(this.velocity.x) > 0.01 || Math.abs(this.velocity.z) > 0.01)) {
-            this.character.position.y += Math.sin(Date.now() * 0.01) * 0.02;
+            // 簡単な歩行アニメーション
+            if (!this.isJumping && this.isMoving) {
+                this.character.position.copy(this.position);
+                this.character.position.y += Math.sin(this.moveProgress * Math.PI * 4) * 0.05;
+            } else {
+                this.character.position.copy(this.position);
+            }
+        } else {
+            // 移動していない場合は位置を更新
+            this.character.position.copy(this.position);
         }
 
         // 落下判定
