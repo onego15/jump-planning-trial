@@ -1,0 +1,245 @@
+import * as THREE from 'three';
+
+/**
+ * LevelGenerator - ランダムなマップを生成するクラス
+ */
+export class LevelGenerator {
+    constructor(scene, gridSize = 12) {
+        this.scene = scene;
+        this.gridSize = gridSize;
+        this.blocks = [];
+        this.startPosition = { x: 0, y: 0, z: 0 };
+        this.goalPosition = null;
+        this.blockSize = 1;
+    }
+
+    /**
+     * マップを生成する
+     */
+    generate() {
+        this.blocks = [];
+
+        // スタート地点の土管を配置
+        this.createStartPipe();
+
+        // スタート地点のブロック
+        this.addBlock(0, 0, 0, 'ground');
+        this.addBlock(1, 0, 0, 'ground');
+
+        // パスを生成（スタートからゴールまで）
+        this.generatePath();
+
+        // ゴール地点のスターを配置
+        this.createGoalStar();
+
+        return {
+            blocks: this.blocks,
+            start: this.startPosition,
+            goal: this.goalPosition
+        };
+    }
+
+    /**
+     * パスを生成
+     */
+    generatePath() {
+        let currentX = 2;
+        let currentY = 0;
+        let currentZ = 0;
+
+        const directions = ['forward', 'up', 'right', 'left'];
+
+        for (let i = 0; i < 15; i++) {
+            // ランダムに方向を選択
+            const dir = directions[Math.floor(Math.random() * directions.length)];
+
+            switch(dir) {
+                case 'forward':
+                    currentX += Math.random() < 0.7 ? 1 : 2;
+                    break;
+                case 'up':
+                    if (currentZ < 4 && Math.random() < 0.5) {
+                        currentZ += 1;
+                    }
+                    currentX += 1;
+                    break;
+                case 'right':
+                    if (Math.abs(currentY + 1) < this.gridSize / 2) {
+                        currentY += 1;
+                    }
+                    break;
+                case 'left':
+                    if (Math.abs(currentY - 1) < this.gridSize / 2) {
+                        currentY -= 1;
+                    }
+                    break;
+            }
+
+            // ブロックを追加
+            const types = ['brick', 'question', 'metal'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            this.addBlock(currentX, currentY, currentZ, type);
+
+            // 時々追加のブロックを配置
+            if (Math.random() < 0.3) {
+                this.addBlock(currentX + 1, currentY, currentZ, type);
+            }
+        }
+
+        // ゴール位置を設定
+        this.goalPosition = {
+            x: currentX + 2,
+            y: currentY,
+            z: currentZ + 2
+        };
+    }
+
+    /**
+     * ブロックを追加
+     */
+    addBlock(x, y, z, type) {
+        const geometry = new THREE.BoxGeometry(this.blockSize, this.blockSize, this.blockSize);
+
+        let material;
+        switch(type) {
+            case 'brick':
+                material = new THREE.MeshToonMaterial({ color: 0xA0522D });
+                break;
+            case 'question':
+                material = new THREE.MeshToonMaterial({ color: 0xFFD700 });
+                break;
+            case 'metal':
+                material = new THREE.MeshToonMaterial({ color: 0x808080 });
+                break;
+            default: // ground
+                material = new THREE.MeshToonMaterial({ color: 0x8B4513 });
+        }
+
+        const block = new THREE.Mesh(geometry, material);
+        block.position.set(x * this.blockSize, y * this.blockSize, z * this.blockSize);
+
+        // エッジを追加（トゥーンシェーディング風）
+        const edges = new THREE.EdgesGeometry(geometry);
+        const line = new THREE.LineSegments(
+            edges,
+            new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 })
+        );
+        block.add(line);
+
+        this.scene.add(block);
+
+        this.blocks.push({
+            id: this.blocks.length,
+            x: x * this.blockSize,
+            y: y * this.blockSize,
+            z: z * this.blockSize,
+            type: type,
+            mesh: block
+        });
+    }
+
+    /**
+     * スタート地点の土管を作成
+     */
+    createStartPipe() {
+        const pipeGeometry = new THREE.CylinderGeometry(0.4, 0.4, 1.5, 16);
+        const pipeMaterial = new THREE.MeshToonMaterial({ color: 0x00FF00 });
+        const pipe = new THREE.Mesh(pipeGeometry, pipeMaterial);
+
+        pipe.position.set(-1, 0, 0.75);
+        pipe.rotation.z = Math.PI / 2;
+
+        // エッジを追加
+        const edges = new THREE.EdgesGeometry(pipeGeometry);
+        const line = new THREE.LineSegments(
+            edges,
+            new THREE.LineBasicMaterial({ color: 0x000000 })
+        );
+        pipe.add(line);
+
+        this.scene.add(pipe);
+    }
+
+    /**
+     * ゴール地点のスターを作成
+     */
+    createGoalStar() {
+        // スターの形状を作成
+        const starShape = new THREE.Shape();
+        const points = 5;
+        const outerRadius = 0.8;
+        const innerRadius = 0.4;
+
+        for (let i = 0; i < points * 2; i++) {
+            const angle = (i * Math.PI) / points;
+            const radius = i % 2 === 0 ? outerRadius : innerRadius;
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+
+            if (i === 0) {
+                starShape.moveTo(x, y);
+            } else {
+                starShape.lineTo(x, y);
+            }
+        }
+        starShape.closePath();
+
+        const extrudeSettings = {
+            depth: 0.3,
+            bevelEnabled: true,
+            bevelThickness: 0.1,
+            bevelSize: 0.1,
+            bevelSegments: 3
+        };
+
+        const starGeometry = new THREE.ExtrudeGeometry(starShape, extrudeSettings);
+        const starMaterial = new THREE.MeshToonMaterial({
+            color: 0xFFFF00,
+            emissive: 0xFFAA00,
+            emissiveIntensity: 0.5
+        });
+
+        this.goalStar = new THREE.Mesh(starGeometry, starMaterial);
+        this.goalStar.position.set(
+            this.goalPosition.x,
+            this.goalPosition.y,
+            this.goalPosition.z
+        );
+
+        // スターを傾ける
+        this.goalStar.rotation.x = Math.PI / 4;
+
+        // エッジを追加
+        const edges = new THREE.EdgesGeometry(starGeometry);
+        const line = new THREE.LineSegments(
+            edges,
+            new THREE.LineBasicMaterial({ color: 0x000000 })
+        );
+        this.goalStar.add(line);
+
+        this.scene.add(this.goalStar);
+    }
+
+    /**
+     * スターを回転させる（アニメーションループで呼ぶ）
+     */
+    update() {
+        if (this.goalStar) {
+            this.goalStar.rotation.z += 0.02;
+        }
+    }
+
+    /**
+     * マップをクリア
+     */
+    clear() {
+        this.blocks.forEach(block => {
+            this.scene.remove(block.mesh);
+        });
+        this.blocks = [];
+
+        if (this.goalStar) {
+            this.scene.remove(this.goalStar);
+        }
+    }
+}

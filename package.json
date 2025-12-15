@@ -1,0 +1,18 @@
+{
+  "name": "plumbers-path-planner",
+  "version": "1.0.0",
+  "description": "AI agent planning demonstration with Mario-style 3D action game",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.160.0",
+    "openai": "^4.24.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
