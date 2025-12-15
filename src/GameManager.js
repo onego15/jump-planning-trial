@@ -59,8 +59,8 @@ export class GameManager {
             console.error('Planning failed:', error);
             this.loadingDisplay.style.display = 'none';
 
-            // APIが使えない場合、簡単なデモプランを使用
-            this.plan = this.getSimpleDemoPlan();
+            // APIが使えない場合、マップを考慮したデモプランを生成
+            this.plan = this.generateSimplePath(levelData);
             this.showStatus('DEMO MODE');
             setTimeout(() => this.hideStatus(), 1000);
 
@@ -147,30 +147,119 @@ export class GameManager {
     }
 
     /**
-     * デモ用の簡単なプラン
+     * マップを考慮した簡単なパスプランニング（デモ用）
      */
-    getSimpleDemoPlan() {
-        return [
-            'MOVE_FORWARD',
-            'MOVE_FORWARD',
-            'MOVE_FORWARD',
-            'JUMP',
-            'MOVE_FORWARD',
-            'MOVE_FORWARD',
-            'MOVE_FORWARD',
-            'JUMP',
-            'MOVE_FORWARD',
-            'MOVE_FORWARD',
-            'TURN_RIGHT',
-            'MOVE_FORWARD',
-            'JUMP',
-            'MOVE_FORWARD',
-            'MOVE_FORWARD',
-            'MOVE_FORWARD',
-            'JUMP',
-            'MOVE_FORWARD',
-            'MOVE_FORWARD'
-        ];
+    generateSimplePath(levelData) {
+        const plan = [];
+        const start = levelData.start;
+        const goal = levelData.goal;
+        const blocks = levelData.blocks;
+
+        // 現在の位置と向き
+        let currentX = start.x;
+        let currentY = start.y;
+        let currentZ = start.z;
+        let directionX = 0;
+        let directionZ = 1; // 初期方向は+Z（前方）
+
+        console.log('Path planning:', { start, goal, blockCount: blocks.length });
+
+        // ゴールに向かって進む
+        for (let step = 0; step < 50; step++) {
+            // ゴールとの距離をチェック
+            const distToGoal = Math.sqrt(
+                Math.pow(currentX - goal.x, 2) +
+                Math.pow(currentZ - goal.z, 2)
+            );
+
+            if (distToGoal < 2) {
+                // ゴールに十分近い
+                break;
+            }
+
+            // ゴールまでの方向ベクトル
+            const deltaX = goal.x - currentX;
+            const deltaZ = goal.z - currentZ;
+
+            // 次に進むべき方向を決定
+            let targetDirX = 0;
+            let targetDirZ = 0;
+
+            if (Math.abs(deltaX) > Math.abs(deltaZ)) {
+                // X方向に進む
+                targetDirX = deltaX > 0 ? 1 : -1;
+                targetDirZ = 0;
+            } else {
+                // Z方向に進む
+                targetDirX = 0;
+                targetDirZ = deltaZ > 0 ? 1 : -1;
+            }
+
+            // 方向転換が必要かチェック
+            if (directionX !== targetDirX || directionZ !== targetDirZ) {
+                // 必要な回転を計算
+                const currentAngle = Math.atan2(directionX, directionZ);
+                const targetAngle = Math.atan2(targetDirX, targetDirZ);
+                let angleDiff = targetAngle - currentAngle;
+
+                // 角度を-π〜πに正規化
+                while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+
+                // 90度ずつ回転
+                if (Math.abs(angleDiff) > 0.1) {
+                    if (angleDiff > 0) {
+                        plan.push('TURN_LEFT');
+                        const temp = directionX;
+                        directionX = -directionZ;
+                        directionZ = temp;
+                    } else {
+                        plan.push('TURN_RIGHT');
+                        const temp = directionX;
+                        directionX = directionZ;
+                        directionZ = -temp;
+                    }
+                    continue; // 回転だけして次のステップへ
+                }
+            }
+
+            // 前方のブロックをチェック
+            const nextX = currentX + directionX;
+            const nextZ = currentZ + directionZ;
+
+            const blockAtNext = blocks.find(b =>
+                Math.abs(b.x - nextX) < 0.5 &&
+                Math.abs(b.z - nextZ) < 0.5
+            );
+
+            // 高さの差をチェック
+            if (blockAtNext && blockAtNext.y > currentY) {
+                // 高いブロックがある場合はジャンプ
+                plan.push('JUMP');
+                currentY = blockAtNext.y;
+            }
+
+            // 前進
+            plan.push('MOVE_FORWARD');
+            currentX = nextX;
+            currentZ = nextZ;
+
+            // ブロックがある場合、その高さに更新
+            if (blockAtNext) {
+                currentY = blockAtNext.y;
+            }
+        }
+
+        // 最後に上昇が必要な場合はジャンプを追加
+        if (goal.y > currentY) {
+            for (let i = 0; i < 3; i++) {
+                plan.push('JUMP');
+                plan.push('MOVE_FORWARD');
+            }
+        }
+
+        console.log('Generated plan:', plan);
+        return plan;
     }
 
     /**
