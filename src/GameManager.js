@@ -15,6 +15,8 @@ export class GameManager {
         this.timeRemaining = 30;
         this.score = 0;
         this.apiKey = null;
+        this.actionTimer = 0; // アクション実行用のタイマー
+        this.actionInterval = 0.5; // アクション実行間隔（秒）
 
         // UI要素への参照
         this.timeDisplay = document.getElementById('time-display');
@@ -32,6 +34,7 @@ export class GameManager {
         this.timeRemaining = 30;
         this.score = 0;
         this.currentStep = 0;
+        this.actionTimer = 0;
 
         // マップを生成
         const levelData = this.levelGenerator.generate();
@@ -227,23 +230,31 @@ export class GameManager {
             const nextX = currentX + directionX;
             const nextZ = currentZ + directionZ;
 
-            // 1ブロック先をチェック
+            // 1ブロック先をチェック（判定範囲を広めに）
             const blockAt1 = blocks.find(b =>
-                Math.abs(b.x - nextX) < 0.5 &&
-                Math.abs(b.z - nextZ) < 0.5
+                Math.abs(b.x - nextX) < 0.6 &&
+                Math.abs(b.z - nextZ) < 0.6
             );
 
             if (blockAt1) {
                 // 1ブロック先にブロックがある
-                if (blockAt1.y > currentY + 0.1) {
-                    // 高いブロック：ジャンプして登る
+                const heightDiff = blockAt1.y - currentY;
+
+                if (heightDiff > 0.5) {
+                    // 明らかに高いブロック（0.5以上）：ジャンプして登る
                     plan.push('JUMP');
                     plan.push('MOVE_FORWARD');
                     currentX = blockAt1.x;
                     currentZ = blockAt1.z;
                     currentY = blockAt1.y;
+                } else if (heightDiff < -0.5) {
+                    // 明らかに低いブロック：そのまま歩いて降りる
+                    plan.push('MOVE_FORWARD');
+                    currentX = blockAt1.x;
+                    currentZ = blockAt1.z;
+                    currentY = blockAt1.y;
                 } else {
-                    // 同じ高さの床：そのまま歩く
+                    // ほぼ同じ高さ（-0.5〜0.5）：普通に歩く
                     plan.push('MOVE_FORWARD');
                     currentX = blockAt1.x;
                     currentZ = blockAt1.z;
@@ -252,8 +263,8 @@ export class GameManager {
             } else {
                 // 1ブロック先が穴：2ブロック先をチェック
                 const blockAt2 = blocks.find(b =>
-                    Math.abs(b.x - (currentX + directionX * 2)) < 0.5 &&
-                    Math.abs(b.z - (currentZ + directionZ * 2)) < 0.5
+                    Math.abs(b.x - (currentX + directionX * 2)) < 0.6 &&
+                    Math.abs(b.z - (currentZ + directionZ * 2)) < 0.6
                 );
 
                 if (blockAt2) {
@@ -267,8 +278,8 @@ export class GameManager {
                 } else {
                     // 2ブロック先もない：3ブロック先をチェック
                     const blockAt3 = blocks.find(b =>
-                        Math.abs(b.x - (currentX + directionX * 3)) < 0.5 &&
-                        Math.abs(b.z - (currentZ + directionZ * 3)) < 0.5
+                        Math.abs(b.x - (currentX + directionX * 3)) < 0.6 &&
+                        Math.abs(b.z - (currentZ + directionZ * 3)) < 0.6
                     );
 
                     if (blockAt3) {
@@ -282,23 +293,34 @@ export class GameManager {
                         currentY = blockAt3.y;
                     } else {
                         // どこにも着地点がない：ゴール方向を再確認して方向転換
-                        // ゴールまでの方向を再計算
                         const goalDeltaX = goal.x - currentX;
                         const goalDeltaZ = goal.z - currentZ;
 
-                        // 別の方向を試す
+                        // 別の方向を試す（適切な回転を計算）
                         if (Math.abs(goalDeltaX) > 0.5) {
                             // X方向に進むべき
-                            directionX = goalDeltaX > 0 ? 1 : -1;
-                            directionZ = 0;
-                            plan.push('TURN_RIGHT');
+                            const newDirX = goalDeltaX > 0 ? 1 : -1;
+                            const newDirZ = 0;
+                            // 現在の向きから目標方向への回転を計算
+                            if (directionX !== newDirX || directionZ !== newDirZ) {
+                                plan.push('TURN_RIGHT');
+                                const temp = directionX;
+                                directionX = directionZ;
+                                directionZ = -temp;
+                            }
                         } else if (Math.abs(goalDeltaZ) > 0.5) {
                             // Z方向に進むべき
-                            directionX = 0;
-                            directionZ = goalDeltaZ > 0 ? 1 : -1;
-                            plan.push('TURN_RIGHT');
+                            const newDirX = 0;
+                            const newDirZ = goalDeltaZ > 0 ? 1 : -1;
+                            // 現在の向きから目標方向への回転を計算
+                            if (directionX !== newDirX || directionZ !== newDirZ) {
+                                plan.push('TURN_RIGHT');
+                                const temp = directionX;
+                                directionX = directionZ;
+                                directionZ = -temp;
+                            }
                         } else {
-                            // どうしようもない：右に回転
+                            // ゴールに十分近い：右に回転
                             plan.push('TURN_RIGHT');
                             const temp = directionX;
                             directionX = directionZ;
@@ -342,10 +364,12 @@ export class GameManager {
             return;
         }
 
-        // プランに従ってアクション実行（60フレームごとに1アクション）
-        if (Math.floor(Date.now() / 1000) % 1 === 0 && this.currentStep < this.plan.length) {
+        // プランに従ってアクション実行（一定間隔で）
+        this.actionTimer += deltaTime;
+        if (this.actionTimer >= this.actionInterval && this.currentStep < this.plan.length) {
             this.executeAction(this.plan[this.currentStep]);
             this.currentStep++;
+            this.actionTimer = 0; // タイマーをリセット
         }
 
         // エージェントの物理演算更新
@@ -456,6 +480,7 @@ export class GameManager {
         this.plan = [];
         this.timeRemaining = 30;
         this.score = 0;
+        this.actionTimer = 0;
 
         if (this.agent) {
             this.agent.remove();
