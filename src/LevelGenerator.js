@@ -24,7 +24,7 @@ export class LevelGenerator {
 
         // スタート地点のブロック
         this.addBlock(0, 0, 0, 'ground');
-        this.addBlock(1, 0, 0, 'ground');
+        this.addBlock(0, 0, 1, 'ground');
 
         // パスを生成（スタートからゴールまで）
         this.generatePath();
@@ -40,53 +40,57 @@ export class LevelGenerator {
     }
 
     /**
-     * パスを生成
+     * パスを生成（必ず飛び越せる穴のみ）
      */
     generatePath() {
         let currentX = 0;
         let currentY = 0;
         let currentZ = 2;
 
-        const directions = ['forward', 'up', 'right', 'left'];
+        const maxJumpDistance = 2; // 最大ジャンプ距離
+        const types = ['brick', 'question', 'metal'];
 
-        for (let i = 0; i < 15; i++) {
-            // ランダムに方向を選択
-            const dir = directions[Math.floor(Math.random() * directions.length)];
-
-            switch(dir) {
-                case 'forward':
-                    currentZ += Math.random() < 0.7 ? 1 : 2;
-                    break;
-                case 'up':
-                    if (currentY < 4 && Math.random() < 0.5) {
-                        currentY += 1;
-                    }
-                    currentZ += 1;
-                    break;
-                case 'right':
-                    if (Math.abs(currentX + 1) < this.gridSize / 2) {
-                        currentX += 1;
-                    }
-                    break;
-                case 'left':
-                    if (Math.abs(currentX - 1) < this.gridSize / 2) {
-                        currentX -= 1;
-                    }
-                    break;
-            }
-
-            // ブロックを追加
-            const types = ['brick', 'question', 'metal'];
+        for (let i = 0; i < 20; i++) {
+            // ブロックの種類をランダムに選択
             const type = types[Math.floor(Math.random() * types.length)];
+
+            // 現在位置にブロックを配置
             this.addBlock(currentX, currentY, currentZ, type);
 
-            // 時々追加のブロックを配置
-            if (Math.random() < 0.3) {
-                this.addBlock(currentX, currentY, currentZ + 1, type);
+            // 次の行動を決定
+            const action = Math.random();
+
+            if (action < 0.5) {
+                // 前進（穴なし）
+                currentZ += 1;
+            } else if (action < 0.7) {
+                // ジャンプで穴を飛び越える（1-2ブロック分）
+                const gapSize = Math.random() < 0.5 ? 1 : 2;
+                currentZ += gapSize;
+            } else if (action < 0.8) {
+                // 高さを上げる
+                if (currentY < 4) {
+                    currentY += 1;
+                }
+                currentZ += 1;
+            } else if (action < 0.9) {
+                // 右に移動
+                if (Math.abs(currentX + 1) < this.gridSize / 2) {
+                    currentX += 1;
+                }
+            } else {
+                // 左に移動
+                if (Math.abs(currentX - 1) < this.gridSize / 2) {
+                    currentX -= 1;
+                }
             }
         }
 
-        // ゴール位置を設定
+        // 最後のブロックを配置
+        const finalType = types[Math.floor(Math.random() * types.length)];
+        this.addBlock(currentX, currentY, currentZ, finalType);
+
+        // ゴール位置を設定（最後のブロックの少し上）
         this.goalPosition = {
             x: currentX,
             y: currentY + 2,

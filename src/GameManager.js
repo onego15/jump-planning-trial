@@ -232,20 +232,33 @@ export class GameManager {
                 Math.abs(b.z - nextZ) < 0.5
             );
 
-            // 高さの差をチェック
-            if (blockAtNext && blockAtNext.y > currentY) {
-                // 高いブロックがある場合はジャンプ
+            // 穴または高いブロックをチェック
+            if (!blockAtNext) {
+                // 穴がある場合：ジャンプして飛び越える
                 plan.push('JUMP');
+                plan.push('MOVE_FORWARD');
+                currentX = nextX;
+                currentZ = nextZ;
+                // 着地先のブロックを探す
+                const landingBlock = blocks.find(b =>
+                    Math.abs(b.x - currentX) < 0.5 &&
+                    Math.abs(b.z - currentZ) < 0.5
+                );
+                if (landingBlock) {
+                    currentY = landingBlock.y;
+                }
+            } else if (blockAtNext.y > currentY + 0.1) {
+                // 高いブロックがある場合：ジャンプして登る
+                plan.push('JUMP');
+                plan.push('MOVE_FORWARD');
+                currentX = nextX;
+                currentZ = nextZ;
                 currentY = blockAtNext.y;
-            }
-
-            // 前進
-            plan.push('MOVE_FORWARD');
-            currentX = nextX;
-            currentZ = nextZ;
-
-            // ブロックがある場合、その高さに更新
-            if (blockAtNext) {
+            } else {
+                // 同じ高さまたは低いブロック：そのまま前進
+                plan.push('MOVE_FORWARD');
+                currentX = nextX;
+                currentZ = nextZ;
                 currentY = blockAtNext.y;
             }
         }
