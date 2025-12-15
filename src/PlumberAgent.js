@@ -146,6 +146,23 @@ export class PlumberAgent {
     }
 
     /**
+     * ジャンプしながら前進（穴や段差を飛び越える）
+     */
+    jumpForward() {
+        if (!this.isJumping && this.isGrounded) {
+            this.velocity.y = this.jumpForce;
+            this.velocity.x = this.direction.x * this.moveSpeed;
+            this.velocity.z = this.direction.z * this.moveSpeed;
+            this.isJumping = true;
+            this.isGrounded = false;
+        } else if (this.isJumping) {
+            // 既にジャンプ中の場合は前進だけ追加
+            this.velocity.x = this.direction.x * this.moveSpeed;
+            this.velocity.z = this.direction.z * this.moveSpeed;
+        }
+    }
+
+    /**
      * 物理演算の更新
      */
     update(blocks) {

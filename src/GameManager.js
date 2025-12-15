@@ -140,10 +140,11 @@ export class GameManager {
         prompt += '- MOVE_FORWARD: 前進\n';
         prompt += '- TURN_RIGHT: 右に90度回転\n';
         prompt += '- TURN_LEFT: 左に90度回転\n';
-        prompt += '- JUMP: ジャンプ（移動中も可能）\n\n';
+        prompt += '- JUMP: ジャンプ（移動中も可能）\n';
+        prompt += '- JUMP_FORWARD: ジャンプしながら前進（穴や段差を飛び越える）\n\n';
         prompt += '以下のJSON形式で行動計画を返してください:\n';
         prompt += '{\n';
-        prompt += '  "plan": ["MOVE_FORWARD", "JUMP", "MOVE_FORWARD", ...]\n';
+        prompt += '  "plan": ["MOVE_FORWARD", "JUMP_FORWARD", "TURN_RIGHT", ...]\n';
         prompt += '}';
 
         return prompt;
@@ -242,8 +243,7 @@ export class GameManager {
 
                 if (heightDiff > 0.5) {
                     // 明らかに高いブロック（0.5以上）：ジャンプして登る
-                    plan.push('JUMP');
-                    plan.push('MOVE_FORWARD');
+                    plan.push('JUMP_FORWARD');
                     currentX = blockAt1.x;
                     currentZ = blockAt1.z;
                     currentY = blockAt1.y;
@@ -269,9 +269,8 @@ export class GameManager {
 
                 if (blockAt2) {
                     // 2ブロック先に着地点がある：1ブロック分の穴をジャンプ
-                    plan.push('JUMP');
-                    plan.push('MOVE_FORWARD');
-                    plan.push('MOVE_FORWARD');
+                    plan.push('JUMP_FORWARD');
+                    plan.push('JUMP_FORWARD');
                     currentX = blockAt2.x;
                     currentZ = blockAt2.z;
                     currentY = blockAt2.y;
@@ -284,10 +283,9 @@ export class GameManager {
 
                     if (blockAt3) {
                         // 3ブロック先に着地点がある：2ブロック分の穴をジャンプ
-                        plan.push('JUMP');
-                        plan.push('MOVE_FORWARD');
-                        plan.push('MOVE_FORWARD');
-                        plan.push('MOVE_FORWARD');
+                        plan.push('JUMP_FORWARD');
+                        plan.push('JUMP_FORWARD');
+                        plan.push('JUMP_FORWARD');
                         currentX = blockAt3.x;
                         currentZ = blockAt3.z;
                         currentY = blockAt3.y;
@@ -334,8 +332,7 @@ export class GameManager {
         // 最後に上昇が必要な場合はジャンプを追加
         if (goal.y > currentY) {
             for (let i = 0; i < 3; i++) {
-                plan.push('JUMP');
-                plan.push('MOVE_FORWARD');
+                plan.push('JUMP_FORWARD');
             }
         }
 
@@ -405,6 +402,9 @@ export class GameManager {
                 break;
             case 'JUMP':
                 this.agent.jump();
+                break;
+            case 'JUMP_FORWARD':
+                this.agent.jumpForward();
                 break;
         }
     }
