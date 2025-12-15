@@ -8,11 +8,11 @@ export class PlumberAgent {
         this.scene = scene;
         this.position = new THREE.Vector3(
             startPosition.x,
-            startPosition.y,
-            startPosition.z + 1
+            startPosition.y + 1, // Y軸が上下
+            startPosition.z
         );
         this.velocity = new THREE.Vector3(0, 0, 0);
-        this.direction = new THREE.Vector3(1, 0, 0); // 初期方向は+X
+        this.direction = new THREE.Vector3(0, 0, 1); // 初期方向は+Z（前方）
         this.isJumping = false;
         this.isGrounded = false;
 
@@ -110,7 +110,7 @@ export class PlumberAgent {
      */
     moveForward() {
         this.velocity.x = this.direction.x * this.moveSpeed;
-        this.velocity.y = this.direction.y * this.moveSpeed;
+        this.velocity.z = this.direction.z * this.moveSpeed;
     }
 
     /**
@@ -118,20 +118,20 @@ export class PlumberAgent {
      */
     turn(direction = 'right') {
         if (direction === 'right') {
-            // 右に90度回転
+            // 右に90度回転（Y軸周り）
             const temp = this.direction.x;
-            this.direction.x = -this.direction.y;
-            this.direction.y = temp;
+            this.direction.x = this.direction.z;
+            this.direction.z = -temp;
         } else {
-            // 左に90度回転
+            // 左に90度回転（Y軸周り）
             const temp = this.direction.x;
-            this.direction.x = this.direction.y;
-            this.direction.y = -temp;
+            this.direction.x = -this.direction.z;
+            this.direction.z = temp;
         }
 
-        // キャラクターの向きを更新
-        const angle = Math.atan2(this.direction.y, this.direction.x);
-        this.character.rotation.z = angle;
+        // キャラクターの向きを更新（Y軸周りの回転）
+        const angle = Math.atan2(this.direction.x, this.direction.z);
+        this.character.rotation.y = angle;
     }
 
     /**
@@ -139,7 +139,7 @@ export class PlumberAgent {
      */
     jump() {
         if (!this.isJumping && this.isGrounded) {
-            this.velocity.z = this.jumpForce;
+            this.velocity.y = this.jumpForce;
             this.isJumping = true;
             this.isGrounded = false;
         }
@@ -149,8 +149,8 @@ export class PlumberAgent {
      * 物理演算の更新
      */
     update(blocks) {
-        // 重力を適用
-        this.velocity.z += this.gravity;
+        // 重力を適用（Y軸方向）
+        this.velocity.y += this.gravity;
 
         // 位置を更新
         this.position.x += this.velocity.x;
@@ -162,9 +162,9 @@ export class PlumberAgent {
         for (const block of blocks) {
             if (this.checkCollision(block)) {
                 // ブロックの上に着地
-                if (this.velocity.z < 0) {
-                    this.position.z = block.z + 1;
-                    this.velocity.z = 0;
+                if (this.velocity.y < 0) {
+                    this.position.y = block.y + 1;
+                    this.velocity.y = 0;
                     this.isJumping = false;
                     this.isGrounded = true;
                 }
@@ -173,18 +173,18 @@ export class PlumberAgent {
 
         // 移動の減速
         this.velocity.x *= 0.85;
-        this.velocity.y *= 0.85;
+        this.velocity.z *= 0.85;
 
         // キャラクターの位置を更新
         this.character.position.copy(this.position);
 
         // 簡単なアニメーション（上下に少し揺らす）
-        if (this.isGrounded && (Math.abs(this.velocity.x) > 0.01 || Math.abs(this.velocity.y) > 0.01)) {
-            this.character.position.z += Math.sin(Date.now() * 0.01) * 0.02;
+        if (this.isGrounded && (Math.abs(this.velocity.x) > 0.01 || Math.abs(this.velocity.z) > 0.01)) {
+            this.character.position.y += Math.sin(Date.now() * 0.01) * 0.02;
         }
 
         // 落下判定
-        if (this.position.z < -5) {
+        if (this.position.y < -5) {
             return 'fell';
         }
 
@@ -197,13 +197,13 @@ export class PlumberAgent {
     checkCollision(block) {
         const distance = Math.sqrt(
             Math.pow(this.position.x - block.x, 2) +
-            Math.pow(this.position.y - block.y, 2)
+            Math.pow(this.position.z - block.z, 2)
         );
 
-        // X,Y平面で0.5以内、Z軸で適切な高さにいる
+        // X,Z平面で0.5以内、Y軸で適切な高さにいる
         return distance < 0.5 &&
-               this.position.z >= block.z &&
-               this.position.z <= block.z + 1.2;
+               this.position.y >= block.y &&
+               this.position.y <= block.y + 1.2;
     }
 
     /**
@@ -224,7 +224,7 @@ export class PlumberAgent {
      */
     victoryPose() {
         // ジャンプして回転
-        this.velocity.z = 0.3;
+        this.velocity.y = 0.3;
         this.character.rotation.y += 0.1;
     }
 

@@ -43,9 +43,9 @@ export class LevelGenerator {
      * パスを生成
      */
     generatePath() {
-        let currentX = 2;
+        let currentX = 0;
         let currentY = 0;
-        let currentZ = 0;
+        let currentZ = 2;
 
         const directions = ['forward', 'up', 'right', 'left'];
 
@@ -55,22 +55,22 @@ export class LevelGenerator {
 
             switch(dir) {
                 case 'forward':
-                    currentX += Math.random() < 0.7 ? 1 : 2;
+                    currentZ += Math.random() < 0.7 ? 1 : 2;
                     break;
                 case 'up':
-                    if (currentZ < 4 && Math.random() < 0.5) {
-                        currentZ += 1;
+                    if (currentY < 4 && Math.random() < 0.5) {
+                        currentY += 1;
                     }
-                    currentX += 1;
+                    currentZ += 1;
                     break;
                 case 'right':
-                    if (Math.abs(currentY + 1) < this.gridSize / 2) {
-                        currentY += 1;
+                    if (Math.abs(currentX + 1) < this.gridSize / 2) {
+                        currentX += 1;
                     }
                     break;
                 case 'left':
-                    if (Math.abs(currentY - 1) < this.gridSize / 2) {
-                        currentY -= 1;
+                    if (Math.abs(currentX - 1) < this.gridSize / 2) {
+                        currentX -= 1;
                     }
                     break;
             }
@@ -82,14 +82,14 @@ export class LevelGenerator {
 
             // 時々追加のブロックを配置
             if (Math.random() < 0.3) {
-                this.addBlock(currentX + 1, currentY, currentZ, type);
+                this.addBlock(currentX, currentY, currentZ + 1, type);
             }
         }
 
         // ゴール位置を設定
         this.goalPosition = {
-            x: currentX + 2,
-            y: currentY,
+            x: currentX,
+            y: currentY + 2,
             z: currentZ + 2
         };
     }
@@ -146,8 +146,7 @@ export class LevelGenerator {
         const pipeMaterial = new THREE.MeshToonMaterial({ color: 0x00FF00 });
         const pipe = new THREE.Mesh(pipeGeometry, pipeMaterial);
 
-        pipe.position.set(-1, 0, 0.75);
-        pipe.rotation.z = Math.PI / 2;
+        pipe.position.set(0, 0.75, -1);
 
         // エッジを追加
         const edges = new THREE.EdgesGeometry(pipeGeometry);
@@ -206,8 +205,9 @@ export class LevelGenerator {
             this.goalPosition.z
         );
 
-        // スターを傾ける
-        this.goalStar.rotation.x = Math.PI / 4;
+        // スターを少し傾ける
+        this.goalStar.rotation.x = Math.PI / 6;
+        this.goalStar.rotation.z = Math.PI / 4;
 
         // エッジを追加
         const edges = new THREE.EdgesGeometry(starGeometry);
@@ -225,7 +225,7 @@ export class LevelGenerator {
      */
     update() {
         if (this.goalStar) {
-            this.goalStar.rotation.z += 0.02;
+            this.goalStar.rotation.y += 0.02;
         }
     }
 

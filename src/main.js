@@ -32,8 +32,8 @@ class Game {
             0.1,
             1000
         );
-        this.camera.position.set(-5, -8, 8);
-        this.camera.lookAt(5, 0, 2);
+        this.camera.position.set(-5, 8, -8);
+        this.camera.lookAt(0, 2, 5);
 
         // レンダラーの作成
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -71,7 +71,7 @@ class Game {
 
         // ディレクショナルライト（太陽光）
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(10, 10, 15);
+        directionalLight.position.set(10, 15, 10);
         directionalLight.castShadow = true;
         directionalLight.shadow.camera.near = 0.1;
         directionalLight.shadow.camera.far = 50;
@@ -85,7 +85,7 @@ class Game {
 
         // ハイライト用のポイントライト
         const pointLight = new THREE.PointLight(0xffff00, 0.5, 20);
-        pointLight.position.set(0, 0, 10);
+        pointLight.position.set(0, 10, 0);
         this.scene.add(pointLight);
     }
 
@@ -105,8 +105,8 @@ class Game {
             const cloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
             cloud.position.set(
                 Math.random() * 30 - 15,
-                Math.random() * 30 - 15,
-                Math.random() * 5 + 8
+                Math.random() * 5 + 8,
+                Math.random() * 30 - 15
             );
             cloud.scale.set(
                 Math.random() + 1,
@@ -123,7 +123,7 @@ class Game {
             side: THREE.DoubleSide
         });
         const horizon = new THREE.Mesh(horizonGeometry, horizonMaterial);
-        horizon.position.set(0, 30, -5);
+        horizon.position.set(0, -5, 30);
         horizon.rotation.x = Math.PI / 2;
         this.scene.add(horizon);
     }
@@ -174,9 +174,9 @@ class Game {
         if (this.gameManager.agent) {
             const agentPos = this.gameManager.agent.getPosition();
             this.camera.position.x = agentPos.x - 5;
-            this.camera.position.y = agentPos.y - 8;
-            this.camera.position.z = agentPos.z + 8;
-            this.camera.lookAt(agentPos.x + 3, agentPos.y, agentPos.z);
+            this.camera.position.y = agentPos.y + 8;
+            this.camera.position.z = agentPos.z - 8;
+            this.camera.lookAt(agentPos.x, agentPos.y, agentPos.z + 3);
         }
 
         // レンダリング
