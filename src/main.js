@@ -132,17 +132,40 @@ class Game {
      * イベントリスナーのセットアップ
      */
     setupEventListeners() {
-        const startBtn = document.getElementById('start-btn');
+        const demoBtn = document.getElementById('demo-btn');
+        const openaiBtn = document.getElementById('openai-btn');
         const resetBtn = document.getElementById('reset-btn');
 
-        startBtn.addEventListener('click', () => {
-            // OpenAI APIキーを取得（環境変数またはプロンプト）
-            let apiKey = null;
+        // 環境変数からOpenAI設定を読み込み
+        const openaiApiKey = import.meta.env.VITE_OPENAI_API_KEY;
+        const openaiBaseUrl = import.meta.env.VITE_OPENAI_BASE_URL || 'https://api.openai.com/v1';
+        const openaiUserId = import.meta.env.VITE_OPENAI_USER_ID;
+        const openaiAppTitle = import.meta.env.VITE_OPENAI_APP_TITLE;
 
+        // OpenAI APIキーがある場合のみOpenAIボタンを表示
+        if (openaiApiKey && openaiApiKey.trim() !== '') {
+            openaiBtn.style.display = 'inline-block';
+        }
+
+        // DEMO MODEボタン
+        demoBtn.addEventListener('click', () => {
             // デモモードで実行（APIキーなし）
-            this.gameManager.startGame(apiKey);
+            this.gameManager.startGame(null);
         });
 
+        // OPENAI MODEボタン
+        openaiBtn.addEventListener('click', () => {
+            // OpenAIモードで実行
+            const config = {
+                apiKey: openaiApiKey,
+                baseURL: openaiBaseUrl,
+                userId: openaiUserId,
+                appTitle: openaiAppTitle
+            };
+            this.gameManager.startGame(config);
+        });
+
+        // RESETボタン
         resetBtn.addEventListener('click', () => {
             this.gameManager.reset();
         });

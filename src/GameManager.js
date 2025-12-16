@@ -28,8 +28,8 @@ export class GameManager {
     /**
      * ゲーム開始
      */
-    async startGame(apiKey = null) {
-        this.apiKey = apiKey;
+    async startGame(config = null) {
+        this.openaiConfig = config;
         this.gameState = 'planning';
         this.timeRemaining = 30;
         this.score = 0;
@@ -46,27 +46,34 @@ export class GameManager {
         this.agent = new PlumberAgent(this.scene, levelData.start);
 
         // AIプランニング
-        this.showStatus('AI PLANNING...');
-        this.loadingDisplay.style.display = 'block';
+        if (config && config.apiKey) {
+            this.showStatus('AI PLANNING...');
+            this.loadingDisplay.style.display = 'block';
 
-        try {
-            this.plan = await this.getPlanFromAI(levelData);
-            console.log('Plan received:', this.plan);
+            try {
+                this.plan = await this.getPlanFromAI(levelData);
+                console.log('Plan received:', this.plan);
 
-            this.loadingDisplay.style.display = 'none';
-            this.showStatus('START!');
-            setTimeout(() => this.hideStatus(), 1000);
+                this.loadingDisplay.style.display = 'none';
+                this.showStatus('OPENAI MODE');
+                setTimeout(() => this.hideStatus(), 1000);
 
-            this.gameState = 'running';
-        } catch (error) {
-            console.error('Planning failed:', error);
-            this.loadingDisplay.style.display = 'none';
+                this.gameState = 'running';
+            } catch (error) {
+                console.error('Planning failed:', error);
+                this.loadingDisplay.style.display = 'none';
+                this.showStatus('AI FAILED - DEMO MODE');
+                setTimeout(() => this.hideStatus(), 2000);
 
-            // APIが使えない場合、マップを考慮したデモプランを生成
+                // APIが使えない場合、マップを考慮したデモプランを生成
+                this.plan = this.generateSimplePath(levelData);
+                this.gameState = 'running';
+            }
+        } else {
+            // デモモード
             this.plan = this.generateSimplePath(levelData);
             this.showStatus('DEMO MODE');
             setTimeout(() => this.hideStatus(), 1000);
-
             this.gameState = 'running';
         }
     }
@@ -75,22 +82,37 @@ export class GameManager {
      * OpenAI APIからプランを取得
      */
     async getPlanFromAI(levelData) {
-        // APIキーがない場合はデモプランを返す
-        if (!this.apiKey) {
+        // APIキーがない場合はエラー
+        if (!this.openaiConfig || !this.openaiConfig.apiKey) {
             throw new Error('No API key provided');
         }
 
         const prompt = this.createPrompt(levelData);
 
-        // OpenAI API呼び出し（実装例）
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        // エンドポイントURLを構築
+        const baseURL = this.openaiConfig.baseURL || 'https://api.openai.com/v1';
+        const endpoint = `${baseURL}/chat/completions`;
+
+        // リクエストヘッダーを構築
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.openaiConfig.apiKey}`
+        };
+
+        // プロキシ用のカスタムヘッダー（存在する場合のみ追加）
+        if (this.openaiConfig.userId) {
+            headers['X-User-Id'] = this.openaiConfig.userId;
+        }
+        if (this.openaiConfig.appTitle) {
+            headers['X-Title'] = this.openaiConfig.appTitle;
+        }
+
+        // OpenAI API呼び出し
+        const response = await fetch(endpoint, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.apiKey}`
-            },
+            headers: headers,
             body: JSON.stringify({
-                model: 'gpt-4',
+                model: 'gpt-4o',
                 messages: [
                     {
                         role: 'system',
@@ -101,9 +123,15 @@ export class GameManager {
                         content: prompt
                     }
                 ],
+                max_tokens: 1000,
                 temperature: 0.7
             })
         });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API request failed: ${response.status} ${errorText}`);
+        }
 
         const data = await response.json();
         const planText = data.choices[0].message.content;

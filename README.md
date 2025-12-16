@@ -57,34 +57,64 @@ npm run preview
 ### デモモード（OpenAI APIなし）
 
 1. ブラウザでゲームを開く
-2. **START GAME** ボタンをクリック
+2. **DEMO MODE** ボタンをクリック
 3. AIが簡単なデモプランに従って自動でプレイします
 
 ### OpenAI APIを使用する場合
 
-`src/main.js` の `startBtn` イベントリスナー内で、APIキーを設定してください：
+#### 1. 環境変数の設定
 
-```javascript
-startBtn.addEventListener('click', () => {
-    const apiKey = 'your-openai-api-key-here';
-    this.gameManager.startGame(apiKey);
-});
-```
-
-または、環境変数 `VITE_OPENAI_API_KEY` を設定します：
+`.env.example` をコピーして `.env.local` を作成：
 
 ```bash
-# .env.local ファイルを作成
-echo "VITE_OPENAI_API_KEY=your-api-key" > .env.local
+cp .env.example .env.local
 ```
 
-そして `src/main.js` を修正：
+`.env.local` ファイルを編集：
+
+```bash
+# 通常のOpenAI APIの場合
+VITE_OPENAI_API_KEY=sk-your-api-key-here
+
+# 社内プロキシ経由の場合（LINE社内など）
+VITE_OPENAI_API_KEY=ok-your-proxy-api-key
+VITE_OPENAI_BASE_URL=https://openai-proxy-apigw-genai.api.linecorp.com/v1
+VITE_OPENAI_USER_ID=your-employee-id
+VITE_OPENAI_APP_TITLE=jump-planning-trial
+```
+
+#### 2. ゲームの起動
+
+```bash
+npm run dev
+```
+
+ブラウザで開くと、**OPENAI MODE** ボタンが表示されます（APIキーが設定されている場合のみ）。
+
+#### 3. プロキシ設定の仕組み
+
+プロキシ経由でOpenAI APIを使用する場合、以下のように設定されます：
+
+- `VITE_OPENAI_BASE_URL`: プロキシのエンドポイントURL
+- `VITE_OPENAI_USER_ID`: プロキシに送信する識別情報（`X-User-Id` ヘッダー）
+- `VITE_OPENAI_APP_TITLE`: アプリケーション識別子（`X-Title` ヘッダー）
+
+内部的には以下のようなリクエストが送信されます：
 
 ```javascript
-startBtn.addEventListener('click', () => {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    this.gameManager.startGame(apiKey);
-});
+fetch('https://openai-proxy-apigw-genai.api.linecorp.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ok-your-api-key',
+        'X-User-Id': 'your-employee-id',
+        'X-Title': 'jump-planning-trial'
+    },
+    body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [...]
+    })
+})
 ```
 
 ## ゲームの仕組み
@@ -142,10 +172,12 @@ AIの出力（行動計画）：
 
 ### 利用可能なアクション
 
-- `MOVE_FORWARD`: 前進
+- `MOVE_FORWARD`: 前進（同じ高さまたは下段差）
 - `TURN_RIGHT`: 右に90度回転
 - `TURN_LEFT`: 左に90度回転
-- `JUMP`: ジャンプ（移動中も可能）
+- `JUMP_FORWARD`: ジャンプしながら前進（穴や上段差を飛び越える）
+- `JUMP_DIAGONAL_LEFT`: 左斜め前にジャンプ（横移動が必要な場合）
+- `JUMP_DIAGONAL_RIGHT`: 右斜め前にジャンプ（横移動が必要な場合）
 
 ## カスタマイズ
 

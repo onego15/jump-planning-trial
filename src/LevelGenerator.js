@@ -17,6 +17,9 @@ export class LevelGenerator {
      * マップを生成する
      */
     generate() {
+        // 前のレベルをクリア
+        this.clearLevel();
+
         this.blocks = [];
 
         // スタート地点の土管を配置
@@ -37,6 +40,42 @@ export class LevelGenerator {
             start: this.startPosition,
             goal: this.goalPosition
         };
+    }
+
+    /**
+     * レベルをクリア（シーンから全オブジェクトを削除）
+     */
+    clearLevel() {
+        // blocksのメッシュをシーンから削除
+        this.blocks.forEach(block => {
+            if (block.mesh) {
+                this.scene.remove(block.mesh);
+                if (block.mesh.geometry) block.mesh.geometry.dispose();
+                if (block.mesh.material) block.mesh.material.dispose();
+            }
+        });
+
+        // スタート土管を削除
+        if (this.startPipe) {
+            this.scene.remove(this.startPipe);
+            this.startPipe.traverse(child => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            });
+            this.startPipe = null;
+        }
+
+        // ゴールスターを削除
+        if (this.goalStar) {
+            this.scene.remove(this.goalStar);
+            this.goalStar.traverse(child => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            });
+            this.goalStar = null;
+        }
+
+        this.blocks = [];
     }
 
     /**
@@ -176,6 +215,7 @@ export class LevelGenerator {
         pipe.add(line);
 
         this.scene.add(pipe);
+        this.startPipe = pipe;
     }
 
     /**
