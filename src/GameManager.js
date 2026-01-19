@@ -115,9 +115,8 @@ export class GameManager {
 
         const prompt = this.createPrompt(levelData);
 
-        // エンドポイントURLを構築
-        const baseURL = this.openaiConfig.baseURL || 'https://api.openai.com/v1';
-        const endpoint = `${baseURL}/chat/completions`;
+        // Viteプロキシ経由でAPIを呼び出す（CORS回避）
+        const endpoint = '/api/openai/chat/completions';
 
         // リクエストヘッダーを構築
         const headers = {
@@ -134,14 +133,15 @@ export class GameManager {
         }
 
         // デバッグ情報をログ出力
-        console.log('OpenAI API Request:', {
+        console.log('OpenAI API Request (via Vite proxy):', {
             endpoint: endpoint,
+            targetURL: this.openaiConfig.baseURL || 'https://api.openai.com/v1',
             model: 'gpt-4o',
             hasApiKey: !!this.openaiConfig.apiKey,
             headers: Object.keys(headers)
         });
 
-        // OpenAI API呼び出し
+        // OpenAI API呼び出し（Viteプロキシ経由）
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: headers,

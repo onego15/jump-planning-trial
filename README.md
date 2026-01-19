@@ -64,24 +64,27 @@ npm run preview
 
 #### 1. 環境変数の設定
 
-`.env.example` をコピーして `.env.local` を作成：
+`.env.example` をコピーして `.env` を作成：
 
 ```bash
-cp .env.example .env.local
+cp .env.example .env
 ```
 
-`.env.local` ファイルを編集：
+`.env` ファイルを編集：
 
 ```bash
 # 通常のOpenAI APIの場合
 VITE_OPENAI_API_KEY=sk-your-api-key-here
+VITE_OPENAI_BASE_URL=https://api.openai.com/v1
 
-# 社内プロキシ経由の場合（LINE社内など）
-VITE_OPENAI_API_KEY=ok-your-proxy-api-key
-VITE_OPENAI_BASE_URL=https://openai-proxy-apigw-genai.api.linecorp.com/v1
+# 社内プロキシ経由の場合（例：flava-cloud）
+VITE_OPENAI_API_KEY=your-proxy-api-key
+VITE_OPENAI_BASE_URL=https://genai-gateway.flava-cloud.com/v1
 VITE_OPENAI_USER_ID=your-employee-id
 VITE_OPENAI_APP_TITLE=jump-planning-trial
 ```
+
+**注意**: `.env` ファイルを変更した後は、開発サーバーを再起動する必要があります（`Ctrl+C` で停止 → `npm run dev` で再起動）。
 
 #### 2. ゲームの起動
 
@@ -91,22 +94,46 @@ npm run dev
 
 ブラウザで開くと、**OPENAI MODE** ボタンが表示されます（APIキーが設定されている場合のみ）。
 
-#### 3. プロキシ設定の仕組み
+#### 3. CORS対策とプロキシ設定の仕組み
 
-プロキシ経由でOpenAI APIを使用する場合、以下のように設定されます：
+ブラウザから直接外部APIを呼び出すとCORS（Cross-Origin Resource Sharing）エラーが発生します。このプロジェクトでは **Vite開発サーバーのプロキシ機能** を使ってこの問題を回避しています。
 
-- `VITE_OPENAI_BASE_URL`: プロキシのエンドポイントURL
+**リクエストフロー：**
+```
+ブラウザ → Vite開発サーバー (/api/openai/*) → 実際のOpenAI API
+```
+
+`vite.config.js` でプロキシが設定されています：
+
+```javascript
+export default defineConfig({
+  server: {
+    proxy: {
+      '/api/openai': {
+        target: process.env.VITE_OPENAI_BASE_URL,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/openai/, '')
+      }
+    }
+  }
+});
+```
+
+**環境変数の意味：**
+
+- `VITE_OPENAI_BASE_URL`: プロキシのターゲットURL（OpenAI APIまたは社内プロキシ）
 - `VITE_OPENAI_USER_ID`: プロキシに送信する識別情報（`X-User-Id` ヘッダー）
 - `VITE_OPENAI_APP_TITLE`: アプリケーション識別子（`X-Title` ヘッダー）
 
 内部的には以下のようなリクエストが送信されます：
 
 ```javascript
-fetch('https://openai-proxy-apigw-genai.api.linecorp.com/v1/chat/completions', {
+// ブラウザからは相対パスで呼び出す（CORS回避）
+fetch('/api/openai/chat/completions', {
     method: 'POST',
     headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ok-your-api-key',
+        'Authorization': 'Bearer your-api-key',
         'X-User-Id': 'your-employee-id',
         'X-Title': 'jump-planning-trial'
     },
@@ -115,6 +142,7 @@ fetch('https://openai-proxy-apigw-genai.api.linecorp.com/v1/chat/completions', {
         messages: [...]
     })
 })
+// Viteプロキシが実際のAPIエンドポイントに転送
 ```
 
 ## ゲームの仕組み
@@ -241,8 +269,28 @@ plumbers-path-planner/
 ### OpenAI APIエラー
 
 - APIキーが正しいか確認
-- APIの利用制限を確認
+- `.env` ファイルが正しく設定されているか確認
+- 開発サーバーを再起動（`.env` 変更後は必須）
+- ブラウザのコンソール（F12）でエラーログを確認：
+  - `OpenAI API Request (via Vite proxy):` - リクエスト情報
+  - `API Error Details:` - エラー詳細
+- APIの利用制限・クォータを確認
 - ネットワーク接続を確認
+
+### CORSエラー
+
+もし `CORS policy` エラーが表示される場合：
+
+1. **開発サーバーを再起動** - `.env` の変更後は必ず再起動が必要
+2. **vite.config.js の確認** - プロキシ設定が正しいか確認
+3. **ブラウザのキャッシュをクリア** - 古いリクエストがキャッシュされている可能性
+
+正しく設定されている場合、リクエストは以下のように変換されます：
+```
+× 直接呼び出し: https://genai-gateway.flava-cloud.com/v1/chat/completions
+○ プロキシ経由: http://localhost:5173/api/openai/chat/completions
+  → Viteが https://genai-gateway.flava-cloud.com/v1/chat/completions に転送
+```
 
 ## ライセンス
 
