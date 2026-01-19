@@ -65,6 +65,12 @@ export class GameManager {
 
         const levelData = this.levelData;
 
+        // エージェントをスタート位置に再配置
+        if (this.agent) {
+            this.agent.remove();
+        }
+        this.agent = new PlumberAgent(this.scene, levelData.start);
+
         // AIプランニング
         if (config && config.apiKey) {
             this.showStatus('AI PLANNING...');

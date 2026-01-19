@@ -177,7 +177,6 @@ class Game {
             // ゲームボタンを有効化
             demoBtn.disabled = false;
             openaiBtn.disabled = false;
-            generateBtn.disabled = true;
         });
 
         // DEMO MODEボタン
@@ -185,7 +184,6 @@ class Game {
             if (!courseGenerated) return;
             // デモモードで実行（APIキーなし）
             this.gameManager.startGame(null);
-            generateBtn.disabled = true;
         });
 
         // OPENAI MODEボタン
@@ -199,7 +197,6 @@ class Game {
                 appTitle: openaiAppTitle
             };
             this.gameManager.startGame(config);
-            generateBtn.disabled = true;
         });
 
         // RESETボタン
