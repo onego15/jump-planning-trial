@@ -22,6 +22,7 @@ export class GameManager {
         // UI要素への参照
         this.timeDisplay = document.getElementById('time-display');
         this.scoreDisplay = document.getElementById('score-display');
+        this.modeDisplay = document.getElementById('mode-display');
         this.statusDisplay = document.getElementById('status-display');
         this.loadingDisplay = document.getElementById('loading');
     }
@@ -82,6 +83,7 @@ export class GameManager {
 
                 this.loadingDisplay.style.display = 'none';
                 this.showStatus('OPENAI MODE');
+                this.showMode('OPENAI MODE');
                 setTimeout(() => this.hideStatus(), 1000);
 
                 this.gameState = 'running';
@@ -93,19 +95,21 @@ export class GameManager {
 
                 // APIが使えない場合、マップを考慮したデモプランを生成
                 this.plan = this.generateSimplePath(levelData);
+                this.showMode('DEMO MODE');
                 this.gameState = 'running';
             }
         } else {
             // デモモード
             this.plan = this.generateSimplePath(levelData);
             this.showStatus('DEMO MODE');
+            this.showMode('DEMO MODE');
             setTimeout(() => this.hideStatus(), 1000);
             this.gameState = 'running';
         }
     }
 
     /**
-     * OpenAI APIからプランを取得
+     * OpenAI APIからプランを取得（リトライ機能付き）
      */
     async getPlanFromAI(levelData) {
         // APIキーがない場合はエラー
@@ -114,75 +118,108 @@ export class GameManager {
         }
 
         const prompt = this.createPrompt(levelData);
+        const maxRetries = 4;
+        const baseDelay = 2000; // 2秒
 
-        // Viteプロキシ経由でAPIを呼び出す（CORS回避）
-        const endpoint = '/api/openai/chat/completions';
+        // リトライループ
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                // Viteプロキシ経由でAPIを呼び出す（CORS回避）
+                const endpoint = '/api/openai/chat/completions';
 
-        // リクエストヘッダーを構築
-        const headers = {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.openaiConfig.apiKey}`
-        };
+                // リクエストヘッダーを構築
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.openaiConfig.apiKey}`
+                };
 
-        // プロキシ用のカスタムヘッダー（存在する場合のみ追加）
-        if (this.openaiConfig.userId) {
-            headers['X-User-Id'] = this.openaiConfig.userId;
-        }
-        if (this.openaiConfig.appTitle) {
-            headers['X-Title'] = this.openaiConfig.appTitle;
-        }
+                // プロキシ用のカスタムヘッダー（存在する場合のみ追加）
+                if (this.openaiConfig.userId) {
+                    headers['X-User-Id'] = this.openaiConfig.userId;
+                }
+                if (this.openaiConfig.appTitle) {
+                    headers['X-Title'] = this.openaiConfig.appTitle;
+                }
 
-        // デバッグ情報をログ出力
-        console.log('OpenAI API Request (via Vite proxy):', {
-            endpoint: endpoint,
-            targetURL: this.openaiConfig.baseURL || 'https://api.openai.com/v1',
-            model: 'gpt-4o',
-            hasApiKey: !!this.openaiConfig.apiKey,
-            headers: Object.keys(headers)
-        });
+                // デバッグ情報をログ出力
+                console.log(`OpenAI API Request (via Vite proxy) - Attempt ${attempt + 1}/${maxRetries + 1}:`, {
+                    endpoint: endpoint,
+                    targetURL: this.openaiConfig.baseURL || 'https://api.openai.com/v1',
+                    model: 'gpt-4o',
+                    hasApiKey: !!this.openaiConfig.apiKey,
+                    headers: Object.keys(headers)
+                });
 
-        // OpenAI API呼び出し（Viteプロキシ経由）
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify({
-                model: 'gpt-4o',
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'あなたはマリオ風アクションゲームの達人AIです。与えられたマップ情報から、スタートからゴールまでの最適な行動計画を立ててください。'
-                    },
-                    {
-                        role: 'user',
-                        content: prompt
+                // OpenAI API呼び出し（Viteプロキシ経由）
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        model: 'gpt-4o',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: 'あなたはマリオ風アクションゲームの達人AIです。与えられたマップ情報から、スタートからゴールまでの最適な行動計画を立ててください。'
+                            },
+                            {
+                                role: 'user',
+                                content: prompt
+                            }
+                        ],
+                        max_tokens: 1000,
+                        temperature: 0.7
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error Details:', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        errorBody: errorText,
+                        attempt: attempt + 1
+                    });
+
+                    // 429 Too Many Requestsの場合はリトライ
+                    if (response.status === 429 && attempt < maxRetries) {
+                        const delay = baseDelay * Math.pow(2, attempt); // 指数バックオフ: 2s, 4s, 8s, 16s
+                        console.log(`Rate limit exceeded. Retrying in ${delay / 1000}s...`);
+                        this.showStatus(`RATE LIMIT - RETRY IN ${delay / 1000}s...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue; // 次の試行へ
                     }
-                ],
-                max_tokens: 1000,
-                temperature: 0.7
-            })
-        });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('API Error Details:', {
-                status: response.status,
-                statusText: response.statusText,
-                errorBody: errorText
-            });
-            throw new Error(`API request failed: ${response.status} ${errorText}`);
+                    // それ以外のエラーまたは最大リトライ回数に達した場合
+                    throw new Error(`API request failed: ${response.status} ${errorText}`);
+                }
+
+                const data = await response.json();
+                const planText = data.choices[0].message.content;
+
+                // JSONを抽出
+                const jsonMatch = planText.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    const planData = JSON.parse(jsonMatch[0]);
+                    return planData.plan || [];
+                }
+
+                throw new Error('Invalid plan format');
+
+            } catch (error) {
+                // ネットワークエラーなどの場合
+                if (attempt < maxRetries && error.message.includes('fetch')) {
+                    const delay = baseDelay * Math.pow(2, attempt);
+                    console.log(`Network error. Retrying in ${delay / 1000}s...`, error);
+                    this.showStatus(`NETWORK ERROR - RETRY IN ${delay / 1000}s...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+                // 最後の試行または再試行不可能なエラー
+                throw error;
+            }
         }
 
-        const data = await response.json();
-        const planText = data.choices[0].message.content;
-
-        // JSONを抽出
-        const jsonMatch = planText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            const planData = JSON.parse(jsonMatch[0]);
-            return planData.plan || [];
-        }
-
-        throw new Error('Invalid plan format');
+        throw new Error('Max retries exceeded');
     }
 
     /**
@@ -647,6 +684,21 @@ export class GameManager {
     }
 
     /**
+     * モード表示
+     */
+    showMode(mode) {
+        this.modeDisplay.textContent = mode;
+        this.modeDisplay.style.display = 'block';
+    }
+
+    /**
+     * モード非表示
+     */
+    hideMode() {
+        this.modeDisplay.style.display = 'none';
+    }
+
+    /**
      * リセット
      */
     reset() {
@@ -665,6 +717,7 @@ export class GameManager {
 
         this.levelGenerator.clear();
         this.hideStatus();
+        this.hideMode();
         this.loadingDisplay.style.display = 'none';
         this.updateUI();
     }
