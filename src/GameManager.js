@@ -1,5 +1,6 @@
 import { LevelGenerator } from './LevelGenerator.js';
 import { PlumberAgent } from './PlumberAgent.js';
+import { AudioManager } from './AudioManager.js';
 
 /**
  * GameManager - ゲーム進行管理とAPI連携
@@ -18,6 +19,7 @@ export class GameManager {
         this.actionTimer = 0; // アクション実行用のタイマー
         this.actionInterval = 0.5; // アクション実行間隔（秒）
         this.levelData = null; // 生成されたレベルデータ
+        this.audioManager = new AudioManager(); // オーディオマネージャー
 
         // UI要素への参照
         this.timeDisplay = document.getElementById('time-display');
@@ -86,6 +88,9 @@ export class GameManager {
                 this.showMode('OPENAI MODE');
                 setTimeout(() => this.hideStatus(), 1000);
 
+                // AI MODE用のBGMを再生
+                this.audioManager.playAIModeBGM();
+
                 this.gameState = 'running';
             } catch (error) {
                 console.error('Planning failed:', error);
@@ -96,6 +101,10 @@ export class GameManager {
                 // APIが使えない場合、マップを考慮したデモプランを生成
                 this.plan = this.generateSimplePath(levelData);
                 this.showMode('DEMO MODE');
+
+                // DEMO MODE用のBGMを再生
+                this.audioManager.playDemoBGM();
+
                 this.gameState = 'running';
             }
         } else {
@@ -104,6 +113,10 @@ export class GameManager {
             this.showStatus('DEMO MODE');
             this.showMode('DEMO MODE');
             setTimeout(() => this.hideStatus(), 1000);
+
+            // DEMO MODE用のBGMを再生
+            this.audioManager.playDemoBGM();
+
             this.gameState = 'running';
         }
     }
@@ -664,6 +677,10 @@ export class GameManager {
         this.score += Math.floor(this.timeRemaining * 100);
         this.showStatus('COURSE CLEAR!');
 
+        // BGMを停止してクリア効果音を再生
+        this.audioManager.stopBGM();
+        this.audioManager.playClearSound();
+
         // 勝利ポーズ
         const victoryInterval = setInterval(() => {
             if (this.agent) {
@@ -682,6 +699,10 @@ export class GameManager {
     gameOver(message) {
         this.gameState = 'failed';
         this.showStatus(message);
+
+        // BGMを停止してタイムアップ効果音を再生
+        this.audioManager.stopBGM();
+        this.audioManager.playTimeUpSound();
 
         // やられモーション
         if (this.agent) {
@@ -744,6 +765,9 @@ export class GameManager {
         this.score = 0;
         this.actionTimer = 0;
         this.levelData = null;
+
+        // BGMを停止
+        this.audioManager.stopBGM();
 
         if (this.agent) {
             this.agent.remove();
