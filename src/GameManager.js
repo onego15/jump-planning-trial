@@ -133,6 +133,14 @@ export class GameManager {
             headers['X-Title'] = this.openaiConfig.appTitle;
         }
 
+        // デバッグ情報をログ出力
+        console.log('OpenAI API Request:', {
+            endpoint: endpoint,
+            model: 'gpt-4o',
+            hasApiKey: !!this.openaiConfig.apiKey,
+            headers: Object.keys(headers)
+        });
+
         // OpenAI API呼び出し
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -156,6 +164,11 @@ export class GameManager {
 
         if (!response.ok) {
             const errorText = await response.text();
+            console.error('API Error Details:', {
+                status: response.status,
+                statusText: response.statusText,
+                errorBody: errorText
+            });
             throw new Error(`API request failed: ${response.status} ${errorText}`);
         }
 
