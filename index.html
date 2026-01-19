@@ -69,13 +69,27 @@
             left: 50%;
             transform: translateX(-50%);
             pointer-events: all;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #difficulty-selector {
+            display: flex;
+            gap: 10px;
+        }
+
+        #game-buttons {
+            display: flex;
+            gap: 10px;
         }
 
         button {
             font-family: inherit;
             font-size: 16px;
             padding: 10px 20px;
-            margin: 0 10px;
+            margin: 0;
             background: #FFD700;
             border: 3px solid #FF8C00;
             border-radius: 5px;
@@ -90,6 +104,16 @@
         button:active {
             transform: translate(2px, 2px);
             box-shadow: 1px 1px 0px black;
+        }
+
+        button.selected {
+            background: #FF8C00;
+            border-color: #FF4500;
+        }
+
+        button.difficulty-btn {
+            font-size: 14px;
+            padding: 8px 16px;
         }
 
         #loading {
@@ -112,9 +136,15 @@
             <div id="loading">LOADING...</div>
         </div>
         <div id="controls">
-            <button id="demo-btn">DEMO MODE</button>
-            <button id="openai-btn" style="display: none;">OPENAI MODE</button>
-            <button id="reset-btn">RESET</button>
+            <div id="difficulty-selector">
+                <button id="easy-btn" class="difficulty-btn selected">EASY</button>
+                <button id="hard-btn" class="difficulty-btn">HARD</button>
+            </div>
+            <div id="game-buttons">
+                <button id="demo-btn">DEMO MODE</button>
+                <button id="openai-btn" style="display: none;">OPENAI MODE</button>
+                <button id="reset-btn">RESET</button>
+            </div>
         </div>
     </div>
 

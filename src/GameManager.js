@@ -28,8 +28,9 @@ export class GameManager {
     /**
      * ゲーム開始
      */
-    async startGame(config = null) {
+    async startGame(config = null, difficulty = 'easy') {
         this.openaiConfig = config;
+        this.difficulty = difficulty;
         this.gameState = 'planning';
         this.timeRemaining = 30;
         this.score = 0;
@@ -37,7 +38,7 @@ export class GameManager {
         this.actionTimer = 0;
 
         // マップを生成
-        const levelData = this.levelGenerator.generate();
+        const levelData = this.levelGenerator.generate(difficulty);
 
         // エージェントを作成
         if (this.agent) {

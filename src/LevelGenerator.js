@@ -16,7 +16,7 @@ export class LevelGenerator {
     /**
      * マップを生成する
      */
-    generate() {
+    generate(difficulty = 'easy') {
         // 前のレベルをクリア
         this.clearLevel();
 
@@ -30,7 +30,11 @@ export class LevelGenerator {
         this.addBlock(0, 0, 1, 'ground');
 
         // パスを生成（スタートからゴールまで）
-        this.generatePath();
+        if (difficulty === 'hard') {
+            this.generateHardPath();
+        } else {
+            this.generatePath();
+        }
 
         // ゴール地点のスターを配置
         this.createGoalStar();
@@ -149,6 +153,90 @@ export class LevelGenerator {
             x: currentX,
             y: currentY + 3,
             z: currentZ + 3
+        };
+    }
+
+    /**
+     * ハードモード用パス生成（罠と分岐を含む）
+     * グリーディアルゴリズムを騙す構造：
+     * - ゴールに近い方向に行き止まりの罠ルート
+     * - ゴールから遠い方向に正解ルート
+     */
+    generateHardPath() {
+        const types = ['brick', 'question', 'metal'];
+
+        // 1. 共通パス：スタートから分岐点まで（Z方向に直進）
+        let x = 0, y = 0, z = 2;
+        for (let i = 0; i < 5; i++) {
+            const type = types[Math.floor(Math.random() * types.length)];
+            this.addBlock(x, y, z, type);
+            z += 1;
+        }
+
+        // 2. 分岐点のブロック
+        const branchZ = z;
+        this.addBlock(x, y, branchZ, 'question');
+
+        // 3. 罠ルート（左側、ゴールに近く見えるが行き止まり）
+        // グリーディはこちらを選びやすい
+        let trapX = x - 1;
+        let trapZ = branchZ + 1;
+        for (let i = 0; i < 4; i++) {
+            this.addBlock(trapX, y, trapZ, 'metal');
+            if (i < 2) {
+                trapX -= 1;  // さらに左に
+            } else {
+                trapZ += 1;  // 前に進む（行き止まりへ）
+            }
+        }
+        // 行き止まりを示すブロック
+        this.addBlock(trapX, y, trapZ, 'metal');
+
+        // 4. 正解ルート（右側、遠回りだが正解）
+        let correctX = x + 1;
+        let correctZ = branchZ + 1;
+        // まず右に移動（ゴールから遠ざかる）
+        for (let i = 0; i < 3; i++) {
+            this.addBlock(correctX, y, correctZ, 'brick');
+            correctX += 1;
+        }
+        // 高さを上げる
+        y += 1;
+        this.addBlock(correctX, y, correctZ, 'brick');
+
+        // 前方に進む
+        for (let i = 0; i < 5; i++) {
+            correctZ += 1;
+            this.addBlock(correctX, y, correctZ, 'brick');
+
+            // 途中で少し複雑にする
+            if (i === 2) {
+                correctZ += 1;  // 穴を作る
+            }
+        }
+
+        // 5. ゴールへの最終アプローチ
+        // 右から中央に戻る
+        for (let i = 0; i < 2; i++) {
+            correctX -= 1;
+            correctZ += 1;
+            this.addBlock(correctX, y, correctZ, 'question');
+        }
+
+        // ゴールへの階段
+        const goalX = correctX;
+        const goalY = y;
+        const goalZ = correctZ + 1;
+
+        for (let i = 1; i <= 2; i++) {
+            this.addBlock(goalX, goalY + i, goalZ + i, 'brick');
+        }
+
+        // ゴール位置を設定
+        this.goalPosition = {
+            x: goalX,
+            y: goalY + 3,
+            z: goalZ + 3
         };
     }
 

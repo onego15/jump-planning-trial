@@ -132,9 +132,14 @@ class Game {
      * イベントリスナーのセットアップ
      */
     setupEventListeners() {
+        const easyBtn = document.getElementById('easy-btn');
+        const hardBtn = document.getElementById('hard-btn');
         const demoBtn = document.getElementById('demo-btn');
         const openaiBtn = document.getElementById('openai-btn');
         const resetBtn = document.getElementById('reset-btn');
+
+        // 難易度の状態
+        let selectedDifficulty = 'easy';
 
         // 環境変数からOpenAI設定を読み込み
         const openaiApiKey = import.meta.env.VITE_OPENAI_API_KEY;
@@ -147,10 +152,24 @@ class Game {
             openaiBtn.style.display = 'inline-block';
         }
 
+        // EASYボタン
+        easyBtn.addEventListener('click', () => {
+            selectedDifficulty = 'easy';
+            easyBtn.classList.add('selected');
+            hardBtn.classList.remove('selected');
+        });
+
+        // HARDボタン
+        hardBtn.addEventListener('click', () => {
+            selectedDifficulty = 'hard';
+            hardBtn.classList.add('selected');
+            easyBtn.classList.remove('selected');
+        });
+
         // DEMO MODEボタン
         demoBtn.addEventListener('click', () => {
             // デモモードで実行（APIキーなし）
-            this.gameManager.startGame(null);
+            this.gameManager.startGame(null, selectedDifficulty);
         });
 
         // OPENAI MODEボタン
@@ -162,7 +181,7 @@ class Game {
                 userId: openaiUserId,
                 appTitle: openaiAppTitle
             };
-            this.gameManager.startGame(config);
+            this.gameManager.startGame(config, selectedDifficulty);
         });
 
         // RESETボタン
