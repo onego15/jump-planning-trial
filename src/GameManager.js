@@ -564,6 +564,8 @@ export class GameManager {
         const agentPos = this.agent.position;
         const agentDir = this.agent.direction;
 
+        console.log(`Executing action: ${action} at position (${agentPos.x.toFixed(2)}, ${agentPos.y.toFixed(2)}, ${agentPos.z.toFixed(2)}) facing (${agentDir.x}, ${agentDir.z})`);
+
         switch(action) {
             case 'MOVE_FORWARD':
             case 'JUMP_FORWARD':
@@ -581,6 +583,7 @@ export class GameManager {
 
                     if (foundBlock) {
                         targetBlock = foundBlock;
+                        console.log(`  → Found target block at distance ${dist}: (${foundBlock.x}, ${foundBlock.y}, ${foundBlock.z})`);
                         break;
                     }
                 }
@@ -591,6 +594,8 @@ export class GameManager {
                     } else {
                         this.agent.jumpForward(targetBlock);
                     }
+                } else {
+                    console.warn(`  ⚠ No target block found for ${action}! Agent may be stuck.`);
                 }
                 break;
             case 'JUMP_DIAGONAL_LEFT':
@@ -616,6 +621,7 @@ export class GameManager {
 
                         if (foundBlock) {
                             diagonalBlock = foundBlock;
+                            console.log(`  → Found diagonal block: (${foundBlock.x}, ${foundBlock.y}, ${foundBlock.z})`);
                             break;
                         }
                     }
@@ -628,16 +634,24 @@ export class GameManager {
                     } else {
                         this.agent.jumpDiagonalRight(diagonalBlock);
                     }
+                } else {
+                    console.warn(`  ⚠ No diagonal block found for ${action}! Agent may be stuck.`);
                 }
                 break;
             case 'TURN_RIGHT':
                 this.agent.turn('right');
+                console.log(`  → Turned right, now facing (${this.agent.direction.x}, ${this.agent.direction.z})`);
                 break;
             case 'TURN_LEFT':
                 this.agent.turn('left');
+                console.log(`  → Turned left, now facing (${this.agent.direction.x}, ${this.agent.direction.z})`);
                 break;
             case 'JUMP':
                 this.agent.jump();
+                console.log(`  → Jumped in place`);
+                break;
+            default:
+                console.warn(`  ⚠ Unknown action: ${action}`);
                 break;
         }
     }
