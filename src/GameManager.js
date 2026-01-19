@@ -184,8 +184,11 @@ export class GameManager {
                     if (response.status === 429 && attempt < maxRetries) {
                         const delay = baseDelay * Math.pow(2, attempt); // 指数バックオフ: 2s, 4s, 8s, 16s
                         console.log(`Rate limit exceeded. Retrying in ${delay / 1000}s...`);
+                        this.loadingDisplay.style.display = 'none';
                         this.showStatus(`RATE LIMIT - RETRY IN ${delay / 1000}s...`);
                         await new Promise(resolve => setTimeout(resolve, delay));
+                        this.loadingDisplay.style.display = 'block';
+                        this.hideStatus();
                         continue; // 次の試行へ
                     }
 
@@ -210,8 +213,11 @@ export class GameManager {
                 if (attempt < maxRetries && error.message.includes('fetch')) {
                     const delay = baseDelay * Math.pow(2, attempt);
                     console.log(`Network error. Retrying in ${delay / 1000}s...`, error);
+                    this.loadingDisplay.style.display = 'none';
                     this.showStatus(`NETWORK ERROR - RETRY IN ${delay / 1000}s...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
+                    this.loadingDisplay.style.display = 'block';
+                    this.hideStatus();
                     continue;
                 }
                 // 最後の試行または再試行不可能なエラー
