@@ -32,78 +32,157 @@ export class PlumberAgent {
     }
 
     /**
-     * キャラクターのメッシュを作成（2-3頭身のシンプルなヒューマノイド）
+     * キャラクターのメッシュを作成（マリオ風2頭身キャラクター）
      */
     createCharacter() {
         this.character = new THREE.Group();
 
-        // 体（青いオーバーオール）
-        const bodyGeometry = new THREE.BoxGeometry(0.4, 0.5, 0.3);
-        const bodyMaterial = new THREE.MeshToonMaterial({ color: 0x0000FF });
+        // === 体（青いオーバーオール） ===
+        const bodyGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+        bodyGeometry.scale(1, 1.2, 0.9); // 縦長に
+        const bodyMaterial = new THREE.MeshToonMaterial({ color: 0x0044FF });
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
         body.position.y = 0.25;
 
-        // エッジを追加
+        // 体のエッジ
         const bodyEdges = new THREE.EdgesGeometry(bodyGeometry);
         const bodyLine = new THREE.LineSegments(
             bodyEdges,
-            new THREE.LineBasicMaterial({ color: 0x000000 })
+            new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 })
         );
         body.add(bodyLine);
 
-        // 頭（肌色）
-        const headGeometry = new THREE.BoxGeometry(0.35, 0.35, 0.3);
-        const headMaterial = new THREE.MeshToonMaterial({ color: 0xFFDDAA });
+        // === 赤いシャツ（体の上部） ===
+        const shirtGeometry = new THREE.SphereGeometry(0.22, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+        const shirtMaterial = new THREE.MeshToonMaterial({ color: 0xFF0000 });
+        const shirt = new THREE.Mesh(shirtGeometry, shirtMaterial);
+        shirt.position.y = 0.4;
+        shirt.rotation.x = Math.PI;
+
+        // === 頭（肌色の球体） ===
+        const headGeometry = new THREE.SphereGeometry(0.22, 16, 16);
+        const headMaterial = new THREE.MeshToonMaterial({ color: 0xFFCC99 });
         const head = new THREE.Mesh(headGeometry, headMaterial);
-        head.position.y = 0.6;
+        head.position.y = 0.65;
 
-        const headEdges = new THREE.EdgesGeometry(headGeometry);
-        const headLine = new THREE.LineSegments(
-            headEdges,
-            new THREE.LineBasicMaterial({ color: 0x000000 })
-        );
-        head.add(headLine);
+        // === 鼻（大きめの球体） ===
+        const noseGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+        const noseMaterial = new THREE.MeshToonMaterial({ color: 0xFFAA77 });
+        const nose = new THREE.Mesh(noseGeometry, noseMaterial);
+        nose.position.set(0, 0.63, 0.18);
 
-        // 帽子（赤）
-        const hatGeometry = new THREE.BoxGeometry(0.4, 0.15, 0.35);
-        const hatMaterial = new THREE.MeshToonMaterial({ color: 0xFF0000 });
-        const hat = new THREE.Mesh(hatGeometry, hatMaterial);
-        hat.position.y = 0.75;
+        // === ひげ（黒い楕円形） ===
+        const mustacheGeometry = new THREE.SphereGeometry(0.12, 8, 8);
+        mustacheGeometry.scale(1.5, 0.3, 0.5);
+        const mustacheMaterial = new THREE.MeshToonMaterial({ color: 0x2B1B0A });
+        const mustache = new THREE.Mesh(mustacheGeometry, mustacheMaterial);
+        mustache.position.set(0, 0.58, 0.15);
 
-        const hatEdges = new THREE.EdgesGeometry(hatGeometry);
-        const hatLine = new THREE.LineSegments(
-            hatEdges,
-            new THREE.LineBasicMaterial({ color: 0x000000 })
-        );
-        hat.add(hatLine);
+        // === 目（白と黒） ===
+        const eyeWhiteGeometry = new THREE.SphereGeometry(0.06, 8, 8);
+        const eyeWhiteMaterial = new THREE.MeshToonMaterial({ color: 0xFFFFFF });
 
-        // 腕（左右）
-        const armGeometry = new THREE.BoxGeometry(0.15, 0.4, 0.15);
-        const armMaterial = new THREE.MeshToonMaterial({ color: 0x0000FF });
+        const leftEyeWhite = new THREE.Mesh(eyeWhiteGeometry, eyeWhiteMaterial);
+        leftEyeWhite.position.set(-0.08, 0.68, 0.15);
+        leftEyeWhite.scale.set(1, 1.2, 0.5);
+
+        const rightEyeWhite = new THREE.Mesh(eyeWhiteGeometry, eyeWhiteMaterial);
+        rightEyeWhite.position.set(0.08, 0.68, 0.15);
+        rightEyeWhite.scale.set(1, 1.2, 0.5);
+
+        // 瞳
+        const pupilGeometry = new THREE.SphereGeometry(0.03, 8, 8);
+        const pupilMaterial = new THREE.MeshToonMaterial({ color: 0x000000 });
+
+        const leftPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+        leftPupil.position.set(-0.08, 0.68, 0.18);
+
+        const rightPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+        rightPupil.position.set(0.08, 0.68, 0.18);
+
+        // === 帽子（赤） ===
+        const capGeometry = new THREE.SphereGeometry(0.24, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+        const capMaterial = new THREE.MeshToonMaterial({ color: 0xFF0000 });
+        const cap = new THREE.Mesh(capGeometry, capMaterial);
+        cap.position.y = 0.77;
+        cap.rotation.x = Math.PI;
+
+        // 帽子のつば
+        const peakGeometry = new THREE.CylinderGeometry(0.28, 0.28, 0.05, 16);
+        const peakMaterial = new THREE.MeshToonMaterial({ color: 0xCC0000 });
+        const peak = new THREE.Mesh(peakGeometry, peakMaterial);
+        peak.position.y = 0.75;
+
+        // 帽子のマーク（Mの代わりに白い円）
+        const logoGeometry = new THREE.CircleGeometry(0.08, 16);
+        const logoMaterial = new THREE.MeshToonMaterial({ color: 0xFFFFFF, side: THREE.DoubleSide });
+        const logo = new THREE.Mesh(logoGeometry, logoMaterial);
+        logo.position.set(0, 0.8, 0.2);
+        logo.rotation.x = -Math.PI / 8;
+
+        // === 腕（青い袖 + 白い手袋） ===
+        const armGeometry = new THREE.CapsuleGeometry(0.06, 0.25, 8, 8);
+        const armMaterial = new THREE.MeshToonMaterial({ color: 0xFF0000 });
 
         const leftArm = new THREE.Mesh(armGeometry, armMaterial);
-        leftArm.position.set(-0.275, 0.2, 0);
+        leftArm.position.set(-0.24, 0.3, 0);
+        leftArm.rotation.z = Math.PI / 8;
 
         const rightArm = new THREE.Mesh(armGeometry, armMaterial);
-        rightArm.position.set(0.275, 0.2, 0);
+        rightArm.position.set(0.24, 0.3, 0);
+        rightArm.rotation.z = -Math.PI / 8;
 
-        // 脚（左右）
-        const legGeometry = new THREE.BoxGeometry(0.15, 0.3, 0.15);
-        const legMaterial = new THREE.MeshToonMaterial({ color: 0x8B4513 });
+        // 手袋（白）
+        const gloveGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+        const gloveMaterial = new THREE.MeshToonMaterial({ color: 0xFFFFFF });
+
+        const leftGlove = new THREE.Mesh(gloveGeometry, gloveMaterial);
+        leftGlove.position.set(-0.28, 0.12, 0);
+
+        const rightGlove = new THREE.Mesh(gloveGeometry, gloveMaterial);
+        rightGlove.position.set(0.28, 0.12, 0);
+
+        // === 脚（青いズボン） ===
+        const legGeometry = new THREE.CapsuleGeometry(0.08, 0.22, 8, 8);
+        const legMaterial = new THREE.MeshToonMaterial({ color: 0x0044FF });
 
         const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-        leftLeg.position.set(-0.1, -0.15, 0);
+        leftLeg.position.set(-0.08, -0.08, 0);
 
         const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
-        rightLeg.position.set(0.1, -0.15, 0);
+        rightLeg.position.set(0.08, -0.08, 0);
 
+        // === 靴（茶色、大きめ） ===
+        const shoeGeometry = new THREE.BoxGeometry(0.12, 0.08, 0.18);
+        const shoeMaterial = new THREE.MeshToonMaterial({ color: 0x8B4513 });
+
+        const leftShoe = new THREE.Mesh(shoeGeometry, shoeMaterial);
+        leftShoe.position.set(-0.08, -0.22, 0.03);
+
+        const rightShoe = new THREE.Mesh(shoeGeometry, shoeMaterial);
+        rightShoe.position.set(0.08, -0.22, 0.03);
+
+        // === 全パーツを追加 ===
         this.character.add(body);
+        this.character.add(shirt);
         this.character.add(head);
-        this.character.add(hat);
+        this.character.add(nose);
+        this.character.add(mustache);
+        this.character.add(leftEyeWhite);
+        this.character.add(rightEyeWhite);
+        this.character.add(leftPupil);
+        this.character.add(rightPupil);
+        this.character.add(cap);
+        this.character.add(peak);
+        this.character.add(logo);
         this.character.add(leftArm);
         this.character.add(rightArm);
+        this.character.add(leftGlove);
+        this.character.add(rightGlove);
         this.character.add(leftLeg);
         this.character.add(rightLeg);
+        this.character.add(leftShoe);
+        this.character.add(rightShoe);
 
         this.character.position.copy(this.position);
 
