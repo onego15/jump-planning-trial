@@ -22,21 +22,27 @@ export class AudioManager {
      * BGMを停止
      */
     stopBGM() {
+        this.isPlaying = false; // 先にフラグをfalseにしてループを止める
+
         if (this.currentBGM) {
             this.currentBGM.forEach(osc => {
                 try {
                     osc.stop();
+                    osc.disconnect();
                 } catch (e) {
                     // 既に停止している場合は無視
                 }
             });
-            this.currentBGM = null;
+            this.currentBGM = [];
         }
         if (this.currentGainNode) {
-            this.currentGainNode.disconnect();
+            try {
+                this.currentGainNode.disconnect();
+            } catch (e) {
+                // 既に切断されている場合は無視
+            }
             this.currentGainNode = null;
         }
-        this.isPlaying = false;
     }
 
     /**
@@ -47,6 +53,7 @@ export class AudioManager {
         this.stopBGM();
 
         const melody = [
+            // フレーズ1
             { note: 'E5', duration: 0.15 },
             { note: 'E5', duration: 0.15 },
             { note: 'rest', duration: 0.15 },
@@ -55,10 +62,34 @@ export class AudioManager {
             { note: 'C5', duration: 0.15 },
             { note: 'E5', duration: 0.15 },
             { note: 'rest', duration: 0.15 },
-            { note: 'G5', duration: 0.15 },
-            { note: 'rest', duration: 0.45 },
-            { note: 'G4', duration: 0.15 },
-            { note: 'rest', duration: 0.45 }
+            { note: 'G5', duration: 0.3 },
+            { note: 'rest', duration: 0.3 },
+            { note: 'G4', duration: 0.3 },
+            { note: 'rest', duration: 0.3 },
+
+            // フレーズ2
+            { note: 'C5', duration: 0.3 },
+            { note: 'rest', duration: 0.15 },
+            { note: 'G4', duration: 0.3 },
+            { note: 'rest', duration: 0.3 },
+            { note: 'E4', duration: 0.3 },
+            { note: 'rest', duration: 0.15 },
+            { note: 'A4', duration: 0.3 },
+            { note: 'B4', duration: 0.3 },
+            { note: 'A4', duration: 0.15 },
+            { note: 'G4', duration: 0.45 },
+
+            // フレーズ3（繰り返し）
+            { note: 'E5', duration: 0.2 },
+            { note: 'G5', duration: 0.2 },
+            { note: 'A5', duration: 0.3 },
+            { note: 'F5', duration: 0.15 },
+            { note: 'G5', duration: 0.3 },
+            { note: 'rest', duration: 0.15 },
+            { note: 'E5', duration: 0.3 },
+            { note: 'C5', duration: 0.15 },
+            { note: 'D5', duration: 0.15 },
+            { note: 'B4', duration: 0.45 }
         ];
 
         this.playMelody(melody, true);
@@ -73,18 +104,40 @@ export class AudioManager {
         this.stopBGM();
 
         const melody = [
+            // フレーズ1（上昇アルペジオ）
             { note: 'C5', duration: 0.2 },
             { note: 'E5', duration: 0.2 },
             { note: 'G5', duration: 0.2 },
             { note: 'B5', duration: 0.2 },
-            { note: 'A5', duration: 0.2 },
+            { note: 'A5', duration: 0.3 },
             { note: 'G5', duration: 0.2 },
             { note: 'E5', duration: 0.2 },
-            { note: 'C5', duration: 0.2 },
+            { note: 'C5', duration: 0.3 },
+
+            // フレーズ2（下降とリズム）
             { note: 'D5', duration: 0.2 },
             { note: 'F5', duration: 0.2 },
-            { note: 'A5', duration: 0.2 },
-            { note: 'G5', duration: 0.4 }
+            { note: 'A5', duration: 0.3 },
+            { note: 'G5', duration: 0.4 },
+            { note: 'rest', duration: 0.2 },
+
+            // フレーズ3（変化のあるパターン）
+            { note: 'E5', duration: 0.15 },
+            { note: 'D5', duration: 0.15 },
+            { note: 'C5', duration: 0.2 },
+            { note: 'B4', duration: 0.2 },
+            { note: 'A4', duration: 0.3 },
+            { note: 'rest', duration: 0.2 },
+            { note: 'C5', duration: 0.2 },
+            { note: 'E5', duration: 0.2 },
+            { note: 'G5', duration: 0.4 },
+
+            // フレーズ4（クロージング）
+            { note: 'F5', duration: 0.2 },
+            { note: 'E5', duration: 0.2 },
+            { note: 'D5', duration: 0.2 },
+            { note: 'C5', duration: 0.4 },
+            { note: 'rest', duration: 0.2 }
         ];
 
         this.playMelody(melody, true);
@@ -92,15 +145,23 @@ export class AudioManager {
     }
 
     /**
-     * メロディーを再生
+     * メロディーを再生（改善版：正確なループ）
      */
     playMelody(melody, loop = false) {
-        const startTime = this.audioContext.currentTime;
-        let currentTime = startTime;
+        this.currentBGM = [];
 
-        const playSequence = () => {
-            this.currentBGM = [];
+        const playSequence = (startTime) => {
+            if (!this.isPlaying) return;
 
+            let currentTime = startTime;
+            let sequenceDuration = 0;
+
+            // メロディー全体の長さを計算
+            melody.forEach(note => {
+                sequenceDuration += note.duration;
+            });
+
+            // 各音符をスケジュール
             melody.forEach((note, index) => {
                 if (note.note === 'rest') {
                     currentTime += note.duration;
@@ -130,18 +191,23 @@ export class AudioManager {
                 currentTime += note.duration;
             });
 
-            // ループ再生
-            if (loop) {
-                const totalDuration = currentTime - startTime;
+            // ループ再生（Web Audio APIの時刻を使用）
+            if (loop && this.isPlaying) {
+                // 現在のシーケンスの終了時刻を計算
+                const nextStartTime = startTime + sequenceDuration;
+
+                // 次のシーケンスをスケジュール（少し前にスケジュールして隙間を防ぐ）
+                const currentAudioTime = this.audioContext.currentTime;
+                const timeUntilNext = (nextStartTime - currentAudioTime) * 1000;
+
                 setTimeout(() => {
-                    if (this.isPlaying) {
-                        playSequence();
-                    }
-                }, totalDuration * 1000);
+                    playSequence(nextStartTime);
+                }, Math.max(0, timeUntilNext - 100)); // 100ms前にスケジュール
             }
         };
 
-        playSequence();
+        // 最初のシーケンスを開始
+        playSequence(this.audioContext.currentTime);
     }
 
     /**
