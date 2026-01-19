@@ -298,36 +298,66 @@ export class LevelGenerator {
     }
 
     /**
-     * ブロックを追加
+     * ブロックを追加（下から生えている崖のような形状）
      */
     addBlock(x, y, z, type) {
-        const geometry = new THREE.BoxGeometry(this.blockSize, this.blockSize, this.blockSize);
+        // 崖の高さ（下から足場の高さまで）
+        const cliffHeight = (y + 1) * this.blockSize + 20; // 下方20ユニット分伸ばす
+        const cliffWidth = this.blockSize;
+        const cliffDepth = this.blockSize;
 
-        let material;
+        // 崖のジオメトリ（下から伸びる柱）
+        const geometry = new THREE.BoxGeometry(cliffWidth, cliffHeight, cliffDepth);
+
+        let topColor, sideColor;
         switch(type) {
             case 'brick':
-                material = new THREE.MeshToonMaterial({ color: 0xA0522D });
+                topColor = 0xA0522D;  // レンガ色（上面）
+                sideColor = 0x6B3410; // 暗いレンガ色（側面）
                 break;
             case 'question':
-                material = new THREE.MeshToonMaterial({ color: 0xFFD700 });
+                topColor = 0xFFD700;  // 金色（上面）
+                sideColor = 0xB8860B; // 暗い金色（側面）
                 break;
             case 'metal':
-                material = new THREE.MeshToonMaterial({ color: 0x808080 });
+                topColor = 0x808080;  // グレー（上面）
+                sideColor = 0x505050; // 暗いグレー（側面）
                 break;
             default: // ground
-                material = new THREE.MeshToonMaterial({ color: 0x8B4513 });
+                topColor = 0x8B4513;  // 茶色（上面）
+                sideColor = 0x5C2E0A; // 暗い茶色（側面）
         }
 
-        const block = new THREE.Mesh(geometry, material);
-        block.position.set(x * this.blockSize, y * this.blockSize, z * this.blockSize);
+        // 複数のマテリアルを使用（上面と側面で色を変える）
+        const materials = [
+            new THREE.MeshToonMaterial({ color: sideColor }), // 右面
+            new THREE.MeshToonMaterial({ color: sideColor }), // 左面
+            new THREE.MeshToonMaterial({ color: topColor }),  // 上面（足場）
+            new THREE.MeshToonMaterial({ color: sideColor }), // 下面
+            new THREE.MeshToonMaterial({ color: sideColor }), // 前面
+            new THREE.MeshToonMaterial({ color: sideColor })  // 後面
+        ];
 
-        // エッジを追加（トゥーンシェーディング風）
-        const edges = new THREE.EdgesGeometry(geometry);
-        const line = new THREE.LineSegments(
-            edges,
+        const block = new THREE.Mesh(geometry, materials);
+
+        // 位置を調整（崖が下から伸びるように）
+        const topY = y * this.blockSize;
+        block.position.set(
+            x * this.blockSize,
+            topY - cliffHeight / 2 + this.blockSize / 2,  // 下から伸びる
+            z * this.blockSize
+        );
+
+        // エッジを追加（足場部分のみ強調）
+        const topEdgeGeometry = new THREE.EdgesGeometry(
+            new THREE.BoxGeometry(cliffWidth, this.blockSize * 0.1, cliffDepth)
+        );
+        const topEdgeLine = new THREE.LineSegments(
+            topEdgeGeometry,
             new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 })
         );
-        block.add(line);
+        topEdgeLine.position.y = cliffHeight / 2 - this.blockSize / 2;
+        block.add(topEdgeLine);
 
         this.scene.add(block);
 

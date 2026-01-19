@@ -23,7 +23,7 @@ class Game {
     init() {
         // シーンの作成
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x87CEEB); // 明るい青空
+        this.scene.background = new THREE.Color(0xFFE4B5); // 渓谷の空（薄いオレンジ）
 
         // カメラの作成
         this.camera = new THREE.PerspectiveCamera(
@@ -90,42 +90,88 @@ class Game {
     }
 
     /**
-     * 背景のセットアップ
+     * 背景のセットアップ（渓谷・山岳地帯）
      */
     setupBackground() {
-        // 雲を追加
-        const cloudGeometry = new THREE.SphereGeometry(1, 8, 8);
-        const cloudMaterial = new THREE.MeshToonMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.7
+        // 遠くの山々を追加（レイヤー状に配置）
+        const mountainLayers = [
+            { color: 0x8B7355, distance: 50, height: 30, count: 5 },   // 一番遠い山（茶色）
+            { color: 0xA0826D, distance: 40, height: 25, count: 4 },   // 中間の山
+            { color: 0xB8956F, distance: 30, height: 20, count: 3 }    // 手前の山
+        ];
+
+        mountainLayers.forEach(layer => {
+            for (let i = 0; i < layer.count; i++) {
+                const mountainGeometry = new THREE.ConeGeometry(
+                    8 + Math.random() * 4,  // 底面半径
+                    layer.height,           // 高さ
+                    4                       // セグメント（角錐っぽく）
+                );
+                const mountainMaterial = new THREE.MeshToonMaterial({
+                    color: layer.color,
+                    flatShading: true
+                });
+
+                const mountain = new THREE.Mesh(mountainGeometry, mountainMaterial);
+                mountain.position.set(
+                    (i - layer.count / 2) * 20 + Math.random() * 10,  // X位置（左右に配置）
+                    layer.height / 2 - 25,                             // Y位置（下に配置）
+                    layer.distance + Math.random() * 5                 // Z位置（奥行き）
+                );
+                mountain.rotation.y = Math.random() * Math.PI * 2;
+                this.scene.add(mountain);
+            }
         });
 
-        for (let i = 0; i < 10; i++) {
-            const cloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
-            cloud.position.set(
-                Math.random() * 30 - 15,
-                Math.random() * 5 + 8,
-                Math.random() * 30 - 15
-            );
-            cloud.scale.set(
-                Math.random() + 1,
-                Math.random() * 0.5 + 0.5,
-                Math.random() + 1
-            );
-            this.scene.add(cloud);
-        }
-
-        // 地平線の効果（遠くの山々）
-        const horizonGeometry = new THREE.PlaneGeometry(100, 20);
-        const horizonMaterial = new THREE.MeshBasicMaterial({
-            color: 0x90EE90,
+        // 渓谷の底（遠く下方）
+        const canyonFloorGeometry = new THREE.PlaneGeometry(200, 200);
+        const canyonFloorMaterial = new THREE.MeshToonMaterial({
+            color: 0x654321,  // 暗い茶色
             side: THREE.DoubleSide
         });
-        const horizon = new THREE.Mesh(horizonGeometry, horizonMaterial);
-        horizon.position.set(0, -5, 30);
-        horizon.rotation.x = Math.PI / 2;
-        this.scene.add(horizon);
+        const canyonFloor = new THREE.Mesh(canyonFloorGeometry, canyonFloorMaterial);
+        canyonFloor.rotation.x = -Math.PI / 2;
+        canyonFloor.position.y = -30;
+        this.scene.add(canyonFloor);
+
+        // 岩の壁（側面）
+        for (let side of [-1, 1]) {
+            const wallGeometry = new THREE.PlaneGeometry(100, 60);
+            const wallMaterial = new THREE.MeshToonMaterial({
+                color: 0x8B6F47,  // 岩の色
+                side: THREE.DoubleSide
+            });
+            const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+            wall.position.set(side * 25, 0, 10);
+            wall.rotation.y = side * Math.PI / 2;
+            this.scene.add(wall);
+
+            // 岩の凹凸を追加（球体で表現）
+            for (let i = 0; i < 8; i++) {
+                const rockGeometry = new THREE.SphereGeometry(
+                    2 + Math.random() * 3,
+                    6, 6
+                );
+                const rockMaterial = new THREE.MeshToonMaterial({
+                    color: 0x6B5A3D
+                });
+                const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+                rock.position.set(
+                    side * 25 + side * Math.random() * 2,
+                    Math.random() * 40 - 20,
+                    Math.random() * 40
+                );
+                rock.scale.set(
+                    1 + Math.random(),
+                    1 + Math.random(),
+                    0.5
+                );
+                this.scene.add(rock);
+            }
+        }
+
+        // 霧の効果（遠くをぼかす）
+        this.scene.fog = new THREE.Fog(0xFFE4B5, 20, 60);
     }
 
     /**
