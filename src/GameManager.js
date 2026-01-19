@@ -199,14 +199,28 @@ export class GameManager {
                 const data = await response.json();
                 const planText = data.choices[0].message.content;
 
-                // JSONを抽出
+                // JSONを抽出してパース
                 const jsonMatch = planText.match(/\{[\s\S]*\}/);
                 if (jsonMatch) {
-                    const planData = JSON.parse(jsonMatch[0]);
-                    return planData.plan || [];
+                    let jsonText = jsonMatch[0];
+
+                    // コメントを削除（//から行末まで）
+                    jsonText = jsonText.replace(/\/\/.*$/gm, '');
+
+                    // 末尾のカンマを削除（配列やオブジェクトの最後の要素の後の余分なカンマ）
+                    jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
+
+                    try {
+                        const planData = JSON.parse(jsonText);
+                        return planData.plan || [];
+                    } catch (parseError) {
+                        console.error('JSON parse error:', parseError);
+                        console.error('Attempted to parse:', jsonText);
+                        throw new Error('Invalid plan format: ' + parseError.message);
+                    }
                 }
 
-                throw new Error('Invalid plan format');
+                throw new Error('Invalid plan format: No JSON found');
 
             } catch (error) {
                 // ネットワークエラーなどの場合
@@ -254,10 +268,11 @@ export class GameManager {
         prompt += '- JUMP_FORWARD: ジャンプしながら前進（穴や上段差を飛び越える）\n';
         prompt += '- JUMP_DIAGONAL_LEFT: 左斜め前にジャンプ（横移動が必要な場合）\n';
         prompt += '- JUMP_DIAGONAL_RIGHT: 右斜め前にジャンプ（横移動が必要な場合）\n\n';
-        prompt += '以下のJSON形式で行動計画を返してください:\n';
+        prompt += '重要: 以下の形式で純粋なJSON（コメントなし）を返してください:\n';
         prompt += '{\n';
-        prompt += '  "plan": ["MOVE_FORWARD", "JUMP_FORWARD", "JUMP_DIAGONAL_LEFT", "TURN_RIGHT", ...]\n';
-        prompt += '}';
+        prompt += '  "plan": ["MOVE_FORWARD", "JUMP_FORWARD", "JUMP_DIAGONAL_LEFT", "TURN_RIGHT"]\n';
+        prompt += '}\n\n';
+        prompt += '注意: コメント（//）や説明文は含めないでください。JSONのみを返してください。';
 
         return prompt;
     }
