@@ -134,12 +134,14 @@ class Game {
     setupEventListeners() {
         const easyBtn = document.getElementById('easy-btn');
         const hardBtn = document.getElementById('hard-btn');
+        const generateBtn = document.getElementById('generate-btn');
         const demoBtn = document.getElementById('demo-btn');
         const openaiBtn = document.getElementById('openai-btn');
         const resetBtn = document.getElementById('reset-btn');
 
         // 難易度の状態
         let selectedDifficulty = 'easy';
+        let courseGenerated = false;
 
         // 環境変数からOpenAI設定を読み込み
         const openaiApiKey = import.meta.env.VITE_OPENAI_API_KEY;
@@ -166,14 +168,29 @@ class Game {
             easyBtn.classList.remove('selected');
         });
 
+        // GENERATE COURSEボタン
+        generateBtn.addEventListener('click', () => {
+            // コースのみ生成
+            this.gameManager.generateCourse(selectedDifficulty);
+            courseGenerated = true;
+
+            // ゲームボタンを有効化
+            demoBtn.disabled = false;
+            openaiBtn.disabled = false;
+            generateBtn.disabled = true;
+        });
+
         // DEMO MODEボタン
         demoBtn.addEventListener('click', () => {
+            if (!courseGenerated) return;
             // デモモードで実行（APIキーなし）
-            this.gameManager.startGame(null, selectedDifficulty);
+            this.gameManager.startGame(null);
+            generateBtn.disabled = true;
         });
 
         // OPENAI MODEボタン
         openaiBtn.addEventListener('click', () => {
+            if (!courseGenerated) return;
             // OpenAIモードで実行
             const config = {
                 apiKey: openaiApiKey,
@@ -181,12 +198,17 @@ class Game {
                 userId: openaiUserId,
                 appTitle: openaiAppTitle
             };
-            this.gameManager.startGame(config, selectedDifficulty);
+            this.gameManager.startGame(config);
+            generateBtn.disabled = true;
         });
 
         // RESETボタン
         resetBtn.addEventListener('click', () => {
             this.gameManager.reset();
+            courseGenerated = false;
+            demoBtn.disabled = true;
+            openaiBtn.disabled = true;
+            generateBtn.disabled = false;
         });
     }
 

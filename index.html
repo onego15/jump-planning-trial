@@ -116,6 +116,26 @@
             padding: 8px 16px;
         }
 
+        button:disabled {
+            background: #999;
+            border-color: #666;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        button:disabled:hover {
+            background: #999;
+        }
+
+        #generate-btn {
+            background: #00FF00;
+            border-color: #00AA00;
+        }
+
+        #generate-btn:hover {
+            background: #00DD00;
+        }
+
         #loading {
             position: absolute;
             top: 50%;
@@ -140,9 +160,10 @@
                 <button id="easy-btn" class="difficulty-btn selected">EASY</button>
                 <button id="hard-btn" class="difficulty-btn">HARD</button>
             </div>
+            <button id="generate-btn">GENERATE COURSE</button>
             <div id="game-buttons">
-                <button id="demo-btn">DEMO MODE</button>
-                <button id="openai-btn" style="display: none;">OPENAI MODE</button>
+                <button id="demo-btn" disabled>DEMO MODE</button>
+                <button id="openai-btn" style="display: none;" disabled>OPENAI MODE</button>
                 <button id="reset-btn">RESET</button>
             </div>
         </div>

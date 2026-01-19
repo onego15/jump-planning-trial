@@ -17,6 +17,7 @@ export class GameManager {
         this.apiKey = null;
         this.actionTimer = 0; // アクション実行用のタイマー
         this.actionInterval = 0.5; // アクション実行間隔（秒）
+        this.levelData = null; // 生成されたレベルデータ
 
         // UI要素への参照
         this.timeDisplay = document.getElementById('time-display');
@@ -26,25 +27,43 @@ export class GameManager {
     }
 
     /**
+     * コースを生成（ゲーム開始前）
+     */
+    generateCourse(difficulty = 'easy') {
+        // 既存のコースとエージェントをクリア
+        if (this.agent) {
+            this.agent.remove();
+            this.agent = null;
+        }
+        this.levelGenerator.clear();
+
+        // 新しいコースを生成
+        this.levelData = this.levelGenerator.generate(difficulty);
+
+        // エージェントを配置（表示のみ、まだ動かさない）
+        this.agent = new PlumberAgent(this.scene, this.levelData.start);
+
+        console.log('Course generated:', this.levelData);
+    }
+
+    /**
      * ゲーム開始
      */
-    async startGame(config = null, difficulty = 'easy') {
+    async startGame(config = null) {
         this.openaiConfig = config;
-        this.difficulty = difficulty;
         this.gameState = 'planning';
         this.timeRemaining = 30;
         this.score = 0;
         this.currentStep = 0;
         this.actionTimer = 0;
 
-        // マップを生成
-        const levelData = this.levelGenerator.generate(difficulty);
-
-        // エージェントを作成
-        if (this.agent) {
-            this.agent.remove();
+        // 生成済みのコースを使用
+        if (!this.levelData) {
+            console.error('No course generated! Call generateCourse() first.');
+            return;
         }
-        this.agent = new PlumberAgent(this.scene, levelData.start);
+
+        const levelData = this.levelData;
 
         // AIプランニング
         if (config && config.apiKey) {
@@ -618,6 +637,7 @@ export class GameManager {
         this.timeRemaining = 30;
         this.score = 0;
         this.actionTimer = 0;
+        this.levelData = null;
 
         if (this.agent) {
             this.agent.remove();
