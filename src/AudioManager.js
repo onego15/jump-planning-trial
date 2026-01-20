@@ -92,8 +92,8 @@ export class AudioManager {
             { note: 'B4', duration: 0.45 }
         ];
 
+        this.isPlaying = true;  // playMelody()を呼ぶ前にtrueに設定
         this.playMelody(melody, true);
-        this.isPlaying = true;
     }
 
     /**
@@ -140,8 +140,8 @@ export class AudioManager {
             { note: 'rest', duration: 0.2 }
         ];
 
+        this.isPlaying = true;  // playMelody()を呼ぶ前にtrueに設定
         this.playMelody(melody, true);
-        this.isPlaying = true;
     }
 
     /**
